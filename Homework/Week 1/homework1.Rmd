@@ -1,8 +1,9 @@
 ---
 title: "Homework Exercise 1"
-author: "W203 Instructional Team"
-date: "January 9, 2016"
+author: "Shan He"
+date: "Sep 7, 2017"
 output:
+  word_document: default
   pdf_document: default
 ---
 
@@ -21,53 +22,61 @@ Unit 1 Homework
 Load the dataset found in the file, cars.csv.
 
 ```{r load}
-
+cars = read.csv("cars.csv")
 ```
 
 
 1. What are the variables in the file?
 ```{r}
-
+names(cars)
 ```
 
 
 2. Find the mean, median, minimum, maximum, 1st quartile and 3rd quartile for the mpg variable.
 ```{r}
-
+summary(cars$mpg)
 ```
 
 
 3. Create a histogram of the mpg variable. 
 ```{r}
-
+hist(cars$mpg, main = "Histogram of MPG", xlab =  "MPG")
 ```
 
 
 4. What is the standard deviation of mpg variable?
 ```{r}
-
+sd(cars$mpg)
 ```
 
 
 5. What is the variance of mpg variable?
 ```{r}
-
+var(cars$mpg)
 ```
 
 6. What is the relationship of the standard deviation to the variance? Why does the standard deviation and variance of the mpg variable differ? 
 ```{r}
-
+sd(cars$mpg) == sqrt(var(cars$mpg))
 ```
-
+The standard deviation is the square root of the variance. 
 
 7. How many data points are there for the cyl variable? 
 ```{r}
-
+sum(!is.na(cars$cyl))
 ```
 
-8. What is the mean of the cyl variable?
-```{r}
+8. What is the mean of the cyl variable?'
 
+Case 1: When the mean should be 'NA' if there is any empty entry
+```{r}
+mean(cars$cyl)
+```
+
+Case 2: When the mean should be the mean of all non 'NA' values
+
+```{r}
+mean(cars$cyl, na.rm = TRUE)
 ```
 
 
