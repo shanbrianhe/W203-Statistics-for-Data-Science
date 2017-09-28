@@ -1,0 +1,34 @@
+---
+title: "Broadband Exploration"
+author: "w203 Teaching Team"
+output: pdf_document
+---
+
+## Background
+
+High-speed network connectivity is increasingly viewed as an essential public infrastructure.  There is a active research community that investigates the extent to which government policies foster a healthy broadband market.  The performance of a network industry is often considered in terms of two metrics.
+
+- Speed refers to rate at which customers can upload or download bits of data.
+- Penetration refers to the fraction of customers that have access to network service.
+
+While the policy debate in the United States is largely limited to so-called net neutrality rules, much of the developed world has adopted more aggressive regulatory structures.  These include open access regulations, which compel network owners to share part of their infrastructure with other companies at regulated rates.  Such regulations are often justified by the observation that the high cost of network infrastructure creates what is known as a natural monopoly.  In 2010, a major study by the Berkman Center for Internet and Society reported that out of all OECD countries, only the United States, Mexico, and the Slovak Republic had not adopted some form of open access.
+
+Other countries may also mandate that companies increase penetration, such as through universal access regulation.
+
+In the United States, network owners argue that facilities-based competition - a term that means unregulated competition, typically between a cable and a DSL provider - is sufficient to incentivize investment in high-quality networks.  They caution that attempts to regulate prices or mandate greater penetration will reduce incentives to invest in modern equipment or to lay cable to difficult-to-reach rural areas.  Thus, there is a trade-off among price, speed, and penetration.
+
+
+## Data
+
+You are given three files, Price.csv, Penetration.csv, and Speed.csv.  These contain actual data that was utilized by the Berkman Center, but they may have been modified to test your abilities.
+
+As a first step in your analysis, you should combine these files into a single data frame.  Although there is a merge function in base R, we recommend that you use the dplyr package, which contains a set of join functions.  These match the familiar terminilogy from SQL.
+
+```{r, eval= FALSE}
+library(dplyr)
+?full_join
+```
+
+## Objective
+
+Using only descriptive statistics (no inference), investigate the three-way relationship between price, speed, and penetration.  Does a trade-off exist between these concepts?  Secondarily, consider whether there is evidence for the beneficial effects of open access policies.

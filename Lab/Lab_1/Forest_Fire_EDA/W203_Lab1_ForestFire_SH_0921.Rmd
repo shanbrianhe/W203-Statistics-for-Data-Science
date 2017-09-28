@@ -1,0 +1,219 @@
+---
+title: 'W203 Lab 1: EDA'
+author: "Smith_Vincent_He_Sered"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+### Introduction (20 pts)
+
+```{r results="hide", warning=FALSE}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(grid)
+```
+
+```{r}
+df <- read.csv("/Users/shanhe/Desktop/W203/Lab/Lab_1/Forest_Fire_EDA/forestfires.csv")
+```
+
+```{r results="hide"}
+df_n <- mutate(df,
+       time.of.week = ifelse(df_n$day == "sat" | df_n$day == "sun", "Weekend", "Weekday"),
+       weekend_n = ifelse(df_n$day == "sat" | df_n$day == "sun", 1, 0),
+       season = ifelse(df_n$month == "mar" | df_n$month == "apr" | df_n$month == "may", "spring",
+                ifelse(df_n$month == "jun" | df_n$month == "jul" | df_n$month == "aug", "summer",
+                ifelse(df_n$month == "sep" | df_n$month == "oct" | df_n$month == "nov", "fall",
+                ifelse(df_n$month == "dec" | df_n$month == "jan" | df_n$month == "feb", "winter", "NA")))),
+       spring_n = ifelse(df_n$month == "mar" | df_n$month == "apr" | df_n$month == "may", 1, 0),
+       summer_n = ifelse(df_n$month == "jun" | df_n$month == "jul" | df_n$month == "aug", 1, 0 ),
+       fall_n = ifelse(df_n$month == "sep" | df_n$month == "oct" | df_n$month == "nov", 1, 0  ),
+       winter_n = ifelse(df_n$month == "dec" | df_n$month == "jan" | df_n$month == "feb", 1, 0),
+       XY_Coord = paste(X, Y),
+       size_cat = ifelse(df_n$area  == 0, "Min", 
+                           ifelse(df_n$area >= 0.09 & df_n$area <= 10, "Small",
+                           ifelse(df_n$area > 10 & df_n$area <= 20, "Medium",
+                           ifelse(df_n$area > 20 &df_n$area <= 100, "Large",
+                           ifelse(df_n$area >100, "Severe", "Check"))))),
+       area_p1 = df_n$area + 1 
+)
+```
+
+
+Evaluate the data quality. Are there any issues with the data? Explain how you handled these potential issues. 
+```{r month_reorder}
+# factor month has undesired order
+# when we display graphs involving month, we want Jan -> Dec
+levels(df_n$month)
+#reorder month factor
+df_n$month <- factor(df_n$month, levels = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"))
+# double check reordered levels
+levels(df_n$month)
+```
+
+```{r day_reorder}
+# factor day has undesired order
+# when we display graphs involving day, we want Mon -> Sun
+levels(df_n$day)
+# reorder day factor
+df_n$day <- factor(df_n$day, levels = c("mon", "tue", "wed", "thu", "fri", "sat", "sun"))
+# double check reordered levels
+levels(df_n$day)
+```
+
+```{r create subset with non-zero area}
+df_n_no0 <- subset(df_n, area!= 0) 
+nrow(df_n_no0) #only 270 out of 517 records contain non-zero area
+summary(df_n_no0$area) 
+```
+
+### Analysis of Key Relationships (30 pts)
+
+Explore how your outcome variable is related to the other variables in your dataset. Make sure to use visualizations to understand the nature of each bivariate relationship.
+#### 1. Linear Bivariate Relationships
+We first want to create a scatterplot matrix as a high-level overview of the relationships between our variables - 
+
+A scatterplot matrix reveals that some of the variables do exhibit linear and potentially other non-linear relationships that warrant further exploration. As we noticed in the univariate analysis, Area is postively skewed with majority of the values close to 0. Hence, in order for us to better understand bivariate relationship that Area has with other variables, we repeat the same analysis on both the orginal dataset (dataset 1) as well as a dataset with all 0 area excluded (dataset2). Moreover, we also created a logrithm and a square root transformation for the Area variable in both datasets to explore how these transformations, that decrease the postive skewness, affect the bivariate relationship. Since log(0) is undefined, we decided to add all the Area values by 1 in dataset 1 when calculating their logrithms. 
+
+```{r fig.height=12, fig.width=20, warning=FALSE}
+
+## 1. Dataset 1: all data
+scatterplotMatrix(~ area + sqrt(area) + log(area_p1, base = 10) + X + Y + month + day + FFMC + DMC + DC + ISI + temp + RH + wind + rain, data = df_n,
+                  main = "Scatterplot Matrix for Key Variables", 
+                    diagonal = "histogram")
+```
+
+```{r fig.height=12, fig.width=20, warning=FALSE}
+## 2. Dataset 2: excluding 0 area
+scatterplotMatrix(~ area + sqrt(area) + log(area, base = 10) + X + Y + month + day + FFMC + DMC + DC + ISI + temp + RH + wind + rain, data = df_n_no0,
+                  main = "Scatterplot Matrix for Key Variables", 
+                    diagonal = "histogram")
+```
+
+Both dataset 1 and dataset 2 demonstrate similar relationships, according to the least-square regression lines. However, looking at the smoothing lines for area-related scatterplots, we can see that dataset 1 has more noisy data values.
+
+As shown in the graphs above, we can see the following findings:
+
+1) Neither Square root transformation or logarithm transformation significantly improve any correlation strength
+2) Area has noticeable positive correlation with X, Y, month, day, DMC, DC, and Temp, of which the correlations with DMC and Temp seem to be the strongest
+3) Area and RH are negatively correlated
+4) Area doesn't show much correlation with FFMC, ISI, Wind or Rain. Rain only has 8 non-zero data points so we shouldn't pay too much attention 
+5) Month, DMC, DC, and Temp are positively related
+6) FFMC, DMC, DC, ISI, and Temp are positively related
+7) FFMC and RH show strong negative correlation
+
+By confirming that dataset 2 demonstrates very similar and less noisy relationships, we can likely treat dataset 2 as a useful subset in this EDA. However, since we don't know what a 0 area value means exactly, we want to include analyses on both dataset 1 and 2 to make sure that we are not skewing our results. 
+
+Next, we want to quantify the strengths of the correlations shown in the scatterplot matrices above for both datasets. 
+
+```{r correlation}
+# Setup, create numeric variables for factors Month and Day
+df_n$month_num = as.numeric(df_n$month)
+df_n$day_num = as.numeric(df_n$day)
+
+df_n_no0$month_num = as.numeric(df_n_no0$month)
+df_n_no0$day_num = as.numeric(df_n_no0$day)
+
+## Square Root Transformation
+df_n$area_sqrt = sqrt(df_n$area)
+df_n_no0$area_sqrt = sqrt(df_n_no0$area)
+
+## Log transformation
+df_n$area_log = log(df_n$area_p1, base = 10)
+df_n_no0$area_log = log(df_n_no0$area, base = 10)
+
+## Dataset 1
+round(cor(df_n[,c(13, 26, 27, 1:2, 5:12, 24:25)], use="complete.obs"),3)
+
+## Dataset 2
+round(cor(df_n_no0[,c(13, 26, 27, 1:2, 5:12, 24:25)], use="complete.obs"),3)
+
+```
+
+The correlation coefficients above validate the relationships we noted from the scatterplots As we can see, the strongest correlation that Area has, besides its own transformations, is with Temperature. However, in both datasets, the correlation coefficient between Area and Temperature are merely around 0.10. It's likely that we don't have enough data points to demonstrate stronger correlations related to Area but the strong correlations among Temp and FFMC, DMC, DC, ISI, RH, and wind mean that these variables could also affect the bivariate relationships we see. 
+
+Let's look closely at the relationship between Area and Temp, the strongest correlated variable according to the analyses above. 
+
+```{r}
+hist(df_n$temp)
+hist(df_n_no0$temp)
+```
+As we have seen in the univariate analysis, we don't have many data points for Temp lower than 10 degrees or higher than 30 degrees. We need to keep that in mind when looking at the bivariate relationship. In order have a cleaner box plot graph, we here round temperature readings to their closest integer.
+
+```{r}
+boxplot(log(area_p1, base= 10) ~ round(temp, 0), data = df_n, # log transformation on area, quotient for temperature over 1
+at = sort(unique(round(df_n$temp,0))), cex.axis = .7,
+xlab = "Temperatrue", ylab = "Logarithm of Area",
+main = "Logarithm of Burned Area under Different Temperatures")
+
+boxplot(log(area, base= 10) ~ round(temp,0), data = df_n_no0, # log transformation on area, quotient for temperature over 1
+at = sort(unique(round(df_n_no0$temp,0))), cex.axis = .7,
+xlab = "Temperatrue", ylab = "Logarithm of Area",
+main = "Logarithm of Burned Area under Different Temperatures")
+```
+
+In order to accomodate a few large outliers in the visualizations, we used the log transformation of area (log(area+1) for dataset 1, log(area) for dataset 2). If we focus on Area values in Temperature range of [20 degrees, 30 degrees], we see a slight positive correlation, confirming what we noted in the previous analyses. 
+
+#### 2. Nonlinear Bivariate Relationships
+So far we have only looked at the linear bivariate relationships that Area has with other variables, however, according to both our understanding of the variables and the scatterplots we see above, there could be some nonlinear bivariate relationships that we haven't yet explored. 
+
+##### 2.1 Month
+We know that an increase in month doesn't have any real mathematical meaning in context of an correlation with Area. Hence, it's important to dive deeper into the relationship between Month and Area.
+```{r}
+#Dataset 1
+summary(df_n$month)
+#Dataset 2
+summary(df_n_no0$month)
+```
+The Month data points aren't distributed evenly. Note that there are less than 10 observations for Jan, Apr, May, Nov, and Dec in the original sample (dataset 1) and after excluding the 0 area values in dataset 2, we don't have any observations in Jan or Nov. 
+
+If this sample is taken in a time frame that's a multiple of one year, then we can see that fires that cause burned area > 0 happen most frequently in Aug and Sept, frequently in Mar and Jul and less frequently in other months. We should keep this in mind when interpreting the relationship between Month and Area. 
+
+```{r}
+# Dataset 1
+boxplot(log(area_p1, base = 10) ~ month, data = df_n, # log transformation on area, 
+cex.axis = .7,
+xlab = "Month", ylab = "Logarithm of Area",
+main = "Logarithm of Burned Area in Different Months")
+
+# Dataset 2
+boxplot(log(area, base = 10) ~ month, data = df_n_no0, # log transformation on area, 
+cex.axis = .7,
+xlab = "Month", ylab = "Logarithm of Area",
+main = "Logarithm of Burned Area in Different Months")
+```
+
+In order to accomodate a few large outliers in the visualizations, we used the log transformation of area (log(area+1) for dataset 1, log(area) for dataset 2). May shows the highest median but since it only has 2 observations in dataset 1 and 1 in dataset 2, we shouldn't pay much attention. 
+
+With so few observations in certain months, the comparison of the medians across different months don't say too much but we can see that all fire with burned area >100 hectares happened in Jul, Aug, and Sep. 
+
+##### 2.2 Day
+Similar to Month, Day might have nonlinear relationship with Area
+```{r}
+#Dataset 1
+summary(df_n$day)
+#Dataset 2
+summary(df_n_no0$day)
+```
+Unlike Month, the data points for Day are distributed more evenly. This can be helpful if we try to compare the medians of the burned area on different days. 
+
+```{r}
+# Dataset 1
+boxplot(log(area_p1, base = 10) ~ day, data = df_n, # log transformation on area, 
+cex.axis = .7,
+xlab = "Day", ylab = "Logarithm of Area",
+main = "Logarithm of Burned Area on Different Days")
+
+# Dataset 2
+boxplot(log(area, base = 10) ~ day, data = df_n_no0, # log transformation on area, 
+cex.axis = .7,
+xlab = "Day", ylab = "Logarithm of Area",
+main = "Logarithm of Burned Area on Different Days")
+```
+
+We used similar log transformations here for the visualizations. From the box plots, we can't see a strong bivariate relationship between Area and Day as the medians for different days appear to be pretty close. 
+
+### Analysis of Secondary Effects (10 pts)
+

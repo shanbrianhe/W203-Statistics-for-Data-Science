@@ -1,0 +1,51 @@
+Questions: 
+
+1. What kind of details do we need?
+- investigate what we don't have
+- find the right methodologies
+- in reality there are many more noises in the data
+- most likely, likely, least likely to be important
+- look at key relationship
+- describe what's in there, even low correlation 
+- don't make statements that aren't true
+- describe the quality of the data
+- describe what the visualizations tell us
+ 
+2. What should we look for in the secondary effect?
+- things that weren't included in the main analysis due to the set up of the question/analysis
+- trying to see if we miss anything (variable)
+- still relate to the primary factors but just discuss what we could have missed
+- like season, location, etc
+
+important to describe the potential problems of the data
+not expected to model the data
+just investigate relationship
+
+2. Can we remove the 0 values?
+
+For presentation, explain process, interesting findings/relationship
+
+use log transformation to get to normal dist to be compared
+
+- we can add 1 to the data set so that there won't be 0 area
+- could be 2 cases: 1) area > 0, 2) area = 0
+- in real world we should investigate what the 0's mean
+- investigate with caution
+- do two cases
+
+-- inte pret ds
+  
+
+
+As shown in the graphs above:
+1) Neither Square root transformation or logarithm transformation significantly improve any correlation strength
+
+2) Area has noticeable positive correlation with X, Y, month, day, DMC, DC, and Temp, of which the correlations with DMC and Temp seem to be the strongest
+
+3) Area and RH are negatively correlated
+
+4) Area doesn't show much correlation with FFMC, ISI, Wind or Rain. Rain only has 8 non-zero data points so we shouldn't pay too much attention 
+
+5) Month, DMC, DC, and Temp are positively related
+
+6) FFMC, DMC, DC, ISI, and Temp are positively related

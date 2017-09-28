@@ -1,0 +1,431 @@
+---
+title: "Forest Fire Exploration"
+author: "Shan He"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+In some areas, forest fires are a major environmental concern, endangering human lives and causing substantial economic damage.  Your team has been hired by an agency that is developing an early warning system to identify particularly damaging forest fires. 
+
+
+## Data
+
+You are provided with the file **forestfires.csv**, containing measurements taken of recent fires in a Portuguese park.
+
+As a proxy for how damaging a fire is, you should use the area variable, representing the region burned in hectares.
+
+The dataset includes a number of meteorological variables.  Some of these come from the forest Fire Weather Index (FWI), a Canadian system for rating fire danger. These include Fine Fuel Moisture Code (FFMC),
+Duff Moisture Code (DMC), Drought Code (DC), and Initial Spread Index (ISI).
+
+The following codebook summarizes each variable:
+
+   1. X - x-axis spatial coordinate within the Montesinho park map: 1 to 9
+   2. Y - y-axis spatial coordinate within the Montesinho park map: 2 to 9
+   3. month - month of the year: "jan" to "dec" 
+   4. day - day of the week: "mon" to "sun"
+   5. FFMC - FFMC index from the FWI system: 18.7 to 96.20
+   6. DMC - DMC index from the FWI system: 1.1 to 291.3 
+   7. DC - DC index from the FWI system: 7.9 to 860.6 
+   8. ISI - ISI index from the FWI system: 0.0 to 56.10
+   9. temp - temperature in Celsius degrees: 2.2 to 33.30
+   10. RH - relative humidity in %: 15.0 to 100
+   11. wind - wind speed in km/h: 0.40 to 9.40 
+   12. rain - outside rain in mm/m2 : 0.0 to 6.4 
+   13. area - the burned area of the forest (in hectares): 0.00 to 1090.84 
+
+## Objective
+
+Conduct an exploratory analysis with the aim of understanding what factors lead to particularly damaging forest fires.
+
+## Setup
+
+First, we load the car library, which gives us a convenient scatterplotMatrix function.
+
+```{r car}
+library(car)
+library(dplyr)
+library(ggplot2)
+```
+
+
+### Introduction (20 pts)
+
+State the research question that motivates your analysis.
+```{r}
+
+```
+
+
+Load your data set into R. 
+
+```{r loading}
+# Load the data 
+getwd()
+f <- read.csv("forestfires.csv")
+```
+
+Describe your data set.  What types of variables does it contain?  How many observations are there?
+```{r shape}
+nrow(f)
+str(f)
+```
+
+Evaluate the data quality. Are there any issues with the data? Explain how you handled these potential issues. 
+```{r month_reorder}
+# factor month has undesired order
+# when we display graph involving month, we want Jan -> Dec
+levels(f$month)
+#reorder month factor
+f$month <- factor(f$month, levels = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"))
+# double check reordered levels
+levels(f$month)
+```
+
+```{r day_reorder}
+# factor day has undesired order
+# when we display graph involving day, we want Mon -> Sun
+levels(f$day)
+# reorder day factor
+f$day <- factor(f$day, levels = c("mon", "tue", "wed", "thu", "fri", "sat", "sun"))
+# double check reordered levels
+levels(f$day)
+```
+
+```{r}
+# data frame looks good
+summary(f)
+```
+
+Explain whether any data processing or preparation is required for your data set. 
+```{r}
+# create categorical variables
+f_new <- mutate(f,
+       sun = ifelse(f$day=="sun", 1, 0),
+       mon = ifelse(f$day=="mon", 1, 0),
+       tue = ifelse(f$day=="tue", 1, 0),
+       wed = ifelse(f$day=="wed", 1, 0),
+       thu = ifelse(f$day=="thu", 1, 0),
+       fri = ifelse(f$day=="fri", 1, 0),
+       sat = ifelse(f$day=="sat", 1, 0),
+       time.of.week = ifelse(f$day == "sat" | f$day == "sun", "Weekend", "Weekday"),
+       weekend_n = ifelse(f$day == "sat" | f$day == "sun", 1, 0),
+       season = ifelse(f$month == "mar" | f$month == "apr" | f$month == "may", "spring",
+                       ifelse(f$month == "jun" | f$month == "jul" | f$month == "aug", "summer",
+                       ifelse(f$month == "sep" | f$month == "oct" | f$month == "nov", "fall",
+                       ifelse(f$month == "dec" | f$month == "jan" | f$month == "feb", "winter", "NA")))),
+       spring_n = ifelse(f$month == "mar" | f$month == "apr" | f$month == "may", 1, 0),
+       summer_n = ifelse(f$month == "jun" | f$month == "jul" | f$month == "aug", 1, 0 ),
+       fall_n = ifelse(f$month == "sep" | f$month == "oct" | f$month == "nov", 1, 0  ),
+       winter_n = ifelse(f$month == "dec" | f$month == "jan" | f$month == "feb", 1, 0),
+       fire = ifelse(f$area == 0, 0, 1),
+       area_new = log(f$area + 1)
+)
+```
+
+```{r remove zero areas}
+f_new_no0 <- subset(f_new, area!= 0) 
+nrow(f_new_no0)  
+summary(f_new_no0$area)
+```
+
+### Univariate Analysis of Key Variables (20 pts)
+
+Use visualizations and descriptive statistics to perform a univariate analysis of each key variable. Be sure to describe any anomalies, coding issues, or potentially erroneous values.  Explain how you respond to each issue you identify.  Note any features that appear relevant to statistical analysis.  Discuss what transformations may be appropriate for each variable.
+
+#### Key Variable - Area
+```{r stats for area}
+summary(f_new$area)
+```
+
+```{r histograms for area}
+# the majority of the fires caused burnt area < 200 hectares, Strong positive skewness
+hist(f_new$area, 
+     main="Histogram for Burnt Area", 
+     xlab="Area (hectare)", 
+     xlim=c(0,1200),
+     breaks=6)
+
+hist(f_new_no0$area_new, 
+     main="Histogram for Log(Burnt Area+1)", 
+     xlab="Log(Area+1)", 
+)
+
+hist(log(f_new_no0$area), 
+     main="Histogram for Log(Burnt Area) (Zero Area excluded)", 
+     xlab="Log(Area)", 
+     breaks = -3:7
+)
+axis(1, at = -3:7)
+
+```
+
+
+## Key Variable - temp
+```{r stats for temp}
+summary(f$temp)
+```
+
+```{r histograms for temp}
+# seems to follow a normal distribution
+hist(f$temp, 
+     main="Histogram for Temperature", 
+     ylim = c(0, 200),
+     xlab="Temparature (Celcius)")
+```
+
+## Key Variable - RH (relative humidity)
+```{r stats for RH}
+summary(f$RH)
+```
+
+```{r histograms for RH}
+
+hist(f$RH, 
+     main="Histogram for Relative Humidity", 
+     xlab="Relative Hummidity(%)",
+     xlim = c(0, 100),
+     ylim = c(0,250),
+     breaks = 0:5 * 20
+    )
+```
+
+## Key Variable - Wind
+```{r stats for Wind}
+summary(f$wind)
+```
+
+```{r histogram for Wind}
+
+hist(f$wind, 
+     main="Histogram for Wind Speed", 
+     xlab="Wind Speed (km/h)",
+     #xlim = c(0, 100),
+     #ylim = c(0,250),
+     breaks = 0:5 * 2
+    )
+```
+
+
+## Key Variable - Rain
+```{r stats for Rain}
+summary(f$rain)
+nrow(subset(f, rain != 0)) # only 8 non-zero values
+```
+
+```{r histogram for Rain}
+
+# majority are 0 values
+hist(f$rain, 
+     main="Histogram for Outsdie Rain", 
+     xlab="Rain(mm/m^2)",
+     breaks = 0:14 * 0.5
+    )
+axis(1, at = 0:6 + 0.5)
+```
+
+## Key Variable - FFMC
+
+```{r stats for FFMC}
+summary(f$FFMC)
+```
+
+```{r histogram for FFMC}
+
+hist(f$FFMC, 
+     main="Histogram for FFMC Index", 
+     xlab="FFMC",
+     xlim = c(0,100),
+     breaks = 0:20*5
+    )
+```
+
+## Key Variable - DMC
+
+```{r stats for DMC}
+summary(f$DMC)
+```
+
+```{r histograms for DMC}
+
+hist(f$DMC, 
+     main="Histogram for DMC Index", 
+     xlab="DMC",
+     breaks = 0:12 * 25
+    )
+```
+
+
+## Key Variable - DC
+
+```{r stats for DC}
+summary(f$DC)
+```
+
+```{r histograms for DC}
+
+hist(f$DC, 
+     main="Histogram for DC Index", 
+     xlab="DC",
+     xlim = c(0, 900),
+     breaks = 0:18 * 50
+    )
+axis(1,at = 0:5*200 - 100)
+```
+
+
+
+
+
+
+
+
+##################################################################################################################################################################
+
+### Analysis of Key Relationships (30 pts)
+
+Explore how your outcome variable is related to the other variables in your dataset. Make sure to use visualizations to understand the nature of each bivariate relationship.
+
+#### Correlation Analysis
+```{r warning=FALSE}
+scatterplotMatrix(~ area + FFMC + DMC + DC + ISI + temp + RH + wind + rain, data = f_new_no0,
+                  main = "Scatterplot Matrix for Key Variables", 
+                    diagonal = "histogram")
+```
+```{r correlation}
+# Setup
+## 1) All areas
+f_cor_new <- f_new[,c(5:13, 29)]
+summary(f_cor_new)
+
+## 2) Exclude zero areas
+f_new_no0_cor <- f_new_no0[,c(5:13)]
+summary(f_new_no0_cor)
+
+
+## Correlation for case 1
+cor(f_cor_new, use="complete.obs") #log transformation doesn't seem to improve any correlation
+
+## Correlation for case 2
+cor(f_new_no0_cor, use="complete.obs")
+# cor(log(f_new_no0_cor$area), f_new_no0_cor$temp) doesn't seem to improve correlation
+
+# area is most strongly correlated with temp, RH, and DMC. But they are not strong correlation (<0.1). 
+# we can see that FFMC, DMC, DC, and ISI have strong correlation with each other and Month
+# X and Y are strongly correlated
+# rain is not very important in the correlation since it's mostly 0
+# temp has a strong correlation with Month, FFMC, DMC, DC, ISI, RH, and wind
+```
+
+```{r}
+plot(f_new_no0$temp,log(f_new_no0$area),
+xlab = "Temperatrue", ylab = "Area",
+main = "Burned Area under Different Temperatures")
+abline(lm(log(f_new_no0$area) ~ f_new_no0$temp))
+```
+
+```{r}
+boxplot(log(area) ~ temp%/%1, data = f_new_no0, # log transformation on area, quotient for temperature over 1
+at = sort(unique(f_new_no0$temp%/%1)), cex.axis = .7,
+xlab = "Temperatrue", ylab = "Area",
+main = "Burned Area under Different Temperatures")
+```
+
+
+#### Nonlinear Bivariate Relationship 
+
+##### Month
+```{r}
+summary(f_new$month)
+summary(f_new_no0$month)
+
+# Including Zero Area
+boxplot(area_new ~ month, data = f_new, # log transformation on area, 
+cex.axis = .7,
+xlab = "Month", ylab = "Log(Area)",
+main = "Burned Area (log) in Different Months")
+
+# Excluding Zero Area
+boxplot(log(area) ~ month, data = f_new_no0, # log transformation on area, 
+cex.axis = .7,
+xlab = "Month", ylab = "Log(Area)",
+main = "Burned Area (log) in Different Months")
+```
+
+##### Day
+```{r}
+summary(f_new$day)
+summary(f_new_no0$day)
+
+# Including Zero Area
+boxplot(area_new ~ day, data = f_new, # log transformation on area, 
+cex.axis = .7,
+xlab = "Day", ylab = "Log(Area)",
+main = "Burned Area (log) on Different Days")
+
+# Excluding Zero Area
+boxplot(log(area) ~ day, data = f_new_no0, # log transformation on area, 
+cex.axis = .7,
+xlab = "Day", ylab = "Log(Area)",
+main = "Burned Area (log) on Different Days")
+
+```
+
+
+
+
+
+
+##################################################################################################################################################################
+
+
+
+
+
+What tranformations can you apply to clarify the relationships you see in the data?  Be sure to justify each transformation you use.
+```{r}
+# log transformation on area, quotient for temperature over 1
+```
+
+### Analysis of Secondary Effects (10 pts)
+
+What secondary variables might have confounding effects on the relationships you have identified?  Explain how these variables affect your understanding of the data.
+```{r}
+
+```
+
+
+### Conclusion (20 pts)
+Summarize your exploratory analysis. What can you conclude based on your analysis?  
+```{r}
+
+```
+
+# Evaluation
+
+We will evaluate your report for technical correctness, but also clarity and overall effectiveness.  A point distribution is provided with the above outline.  In addition to these point totals, we will impose penalties for output dumps, unclear language, and other errors.
+
+
+# Submission
+
+Only one student in the team needs to submit via the ISVC.  Make sure that you include the names of all group members in your report.
+
+You must turn in
+\begin{enumerate}
+\item Your pdf report.  In this report, do not suppress the R code that generates your output.
+\item The source file you use to generate your report (i.e. your Rmd file)
+\end{enumerate}
+
+Use the following naming convention for your files:
+
+- lastname1_lastname2_lab1.pdf
+- lastname1_lastname2_lab1.Rmd
+
+
+

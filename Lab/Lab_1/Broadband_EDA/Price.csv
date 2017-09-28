@@ -1,0 +1,31 @@
+Country,Country Code,"Price for low speeds, combined","Price for med speeds, combined","Price for high speeds, combined","Price for very high speeds, combined"
+Australia,AU, $51.86 , $61.02 , $60.19 ,
+Austria,AT, $31.55 , $30.76 , $52.54 , $80.07
+Belgium,BE,, $31.61 , $50.41 ,
+Canada,CA, $28.02 , $40.48 , $63.77 , $121.94
+Czech Republic,CZ, $31.96 , $43.37 , $68.83 , $105.90
+Denmark,DK, $20.36 , $28.82 , $37.58 , $55.32
+Finland,FI, $24.30 , $34.41 , $42.39 , $40.82
+France,FR, $24.75 , $27.91 , $37.74 , $40.87
+Germany,DE, $27.28 , $34.10 , $44.62 , $75.15
+Greece,GR, $26.24 , $31.03 , $38.25 ,
+Hungary,HU, $26.62 , $46.77 , $73.21 , $119.71
+Iceland,IS, $37.23 , $49.33 , $68.55 , $83.43
+Ireland,IE, $22.75 , $40.01 , $68.55 ,
+Italy,IT, $13.10 , $32.92 , $34.50 ,
+Japan,JP, $21.53 , $23.32 , $23.43 , $32.61
+Korea,KR, $27.85 , $38.08 , $39.79 , $39.14
+Luxembourg,LU, $26.21 , $36.56 , $.6931 ,
+Mexico,MX, $60.23 , $69.75 ,,
+Netherlands,NL, $22.76 , $31.65 , $54.31 , $74.77 
+New Zealand,NZ, $33.15 , $45.65 , $59.37 ,
+Norway,NO, $36.46 , $44.79 , $54.39 , $108.63
+Poland,PL, $29.97 , $82.76 , $210.36 ,
+Portugal,PT, $24.01 , $32.96 , $53.78 ,
+Slovak Republic,SK, $30.57 , $45.73 , $86.06 , $99.94
+Spain,ES, $33.93 , $53.99 , $65.52 , $86.83
+Sweden,SE, $21.48 , $26.22 , $34.54 , $37.47
+Switzerland,CH, $20.44 , $30.73 , $39.19 , $55.21
+Turkey,TR, $37.14 , $71.86 ,,
+United Kingdom,GB, $28.33 , $33.81 , $35.80 , $76.22
+United States,US, $24.05 , $43.08 , $59.66 , $130.21

@@ -1,0 +1,57 @@
+---
+title: "Candidate Debt Exploration"
+author: "w203 Teaching Team"
+output: pdf_document
+---
+
+
+## Background
+
+As a member of the campaign committee for an upcoming election, you are interested in knowing as much as possible about debt reported by candidates in previous elections. Using the monthly voter registration statistics for registered voters in Oregon from 2012, perform an exploratory analysis to help the agency address their goals.
+
+
+## Data
+
+You are given a dataset on voter registration from 2012 **"CandidateDebt.csv"**.  The dependent (or target) variable in this data is named "amount".
+
+The labels of some of the variables are listed below; the rest of the variables should be self-explanatory.
+
+
+\begin{tabular}{rl}
+id: &"internal identifier that corresponds to a single expenditure record. \\
+reportnumber: &"identifier used for tracking the individual form \\
+origin: &"This field shows from which filed report-type the data originates. \\
+filerid: &"The unique id assigned to a candidate. \\
+filertype: &"Indicates if this record is for a candidate.\\
+filername: &"The candidate or committee name as reported on the candidates registration. \\
+firstname: &"This field represents the first name, as reported by the filer. \\
+middleinitial: &"This field represents the middle initial, as reported by the filer. \\
+lastname: &"This field represents the last name, as reported by the filer.\\
+office: &"The office sought by the candidate.\\
+legislativedistrict: &"The Washington State legislative district. \\
+position: &"The position associated with an office. \\
+party: &"The political party as declared by the candidate on their registration.\\
+jurisdiction: &"The political jurisdiction associated with the office of a candidate.\\
+jurisdictioncounty: &"The county associated with the jurisdiction of a candidate. \\
+jurisdictiontype: &"The type of jurisdiction this office is: Statewide, Local, etc.\\
+electionyear: &"The election year in the case of candidates.\\
+amount: &"The amount of the debt incurred or order placed.\\
+recordtype: &"This field designates the item as a debt.\\
+fromdate: &"The start date of the period for the report on which this debt record was reported.\\
+thrudate: &"The end date of the period for the report on which this debt record was reported.\\
+debtdate: &"The date that the debt was incurred.\\
+code: &"The type of debt. \\
+description: &"The reported description of the transaction.\\
+vendorname: &"The name of the vendor or recipient’s name. \\
+vendoraddress: &"The street address of the vendor or recipient.\\
+vendorcity: &"The city of the vendor or recipient.\\
+vendorstate: &"The state of the vendor or recipient.\\
+vendorzip: &"The zip code of the vendor or recipient.\\
+\end{tabular} 
+
+
+
+
+## Objective
+
+Perform an exploratory analysis to understand how campaign characteristics are related to the candidates debt. 

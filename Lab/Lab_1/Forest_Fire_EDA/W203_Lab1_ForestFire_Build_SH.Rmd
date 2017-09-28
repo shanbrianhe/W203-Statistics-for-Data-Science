@@ -1,0 +1,426 @@
+---
+title: 'W203 Lab 1: EDA'
+author: "Smith_Vincent_He_Sered"
+output: pdf_document
+---
+
+### Introduction
+
+The purpose of this analysis is to examine what factors are associated with particularly damaging forest fires. For this analysis, area burned will serve as a proxy for damage. 
+
+```{r results="hide", warning=FALSE}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(grid)
+library(corrplot)
+```
+
+```{r}
+df <- read.csv("/Users/shanhe/Desktop/W203/Lab/Lab_1/Forest_Fire_EDA/forestfires.csv")
+```
+
+The examined data set consists of 517 observations on 13 variables. The observed numerical variables are both discrete and continuous. In addition, there are two categorical values indicating the month and the day of the week. 
+
+```{r}
+str(df)
+head(df, 5)
+```
+
+As an initial observation, the data set did not contain any missing values. For the time oriented categorical variables, values are present for each day of the week and each day of the month. However, the temporal range for the dat set is not known. As an example, the data set would not reveal whether two observations occurring in September occurred in the same year, or whether they occurred five years apart. This temporal aspect carries to the numerical values. As examples, it is not clear from the data whether the wind, temperature, and rain variables represent the total rainfall for the given month/day combination, whether they represent the average wind and total rain up to the time of the fire, or some other configuration like a trailing sum/average over a specified time window. In addition, the datset does not provide contextual information that may be helpful such as historical averages for the variables, which could be compared to the observed time of the fire. The set does not provide other potentially helpful information like available fuel, terrain, duration of fire, or cause of fire. Finally, it is not known whether the observations list all recorded fires in the region, fires from a certain period, or a sampling of recorded fires. As a result, analysis related to counts and correlations on the categorical variables must be caveated, since they may be the result of the underlying sampling methods. This makes evaluating and developing context difficult. Finally, the unit of measure for the key Area variable is measured in hectares to two decimal places. Because a hectare is relatively large unit of area, measuring small fires with precision may be difficult. It further may be responsible for generating 0 values for the area variable and obscuring relationships that might be better revealed by a more precise unit of measure.
+
+```{r}
+summary(df)
+table(df$day)
+table(df$month)
+```
+
+To facilitate the evaluation of correlations with categorical variables, dummy variables were created for each level in a parallel dataframe. The dummy variable takes on a value of 1 for instances of the category and 0 for instances where another level is present. In addition, categorical variables along with their associated dummy variables were created for the twelve months, the four seasons, and for weekdays and weekends. Weekdays are considered Monday through Friday for purposes of the analysis. Summer is considered June through August, fall is considered September through November, winter is December through February, and Spring is March through May. An additional variable was created to concatenate the XY coordinate. Because of the presence of 0 valued observations in the area variable, a variable adding 1 to each observation was created to facilitate data transforms. And, finally, a variable for relative fire severity based on area burned was created with the criteria of 0 as "Min", 0.09 to 10 as "Small",  >10 to 20 as "Medium", >20 to 100 as "Large", and >100 as "Severe". The designations are based on the distribution of non-zero values relative to the sample, although it may be useful to consult an expert for additional analysis to confirm any assumptions.
+
+It is worth noting that because of the range of the numerical scales in the variables it would be useful to place each variable on a common scale if a modeling exercise were undertaken.
+
+```{r results="hide"}
+# to facilitate matching
+df_n <- read.csv("/Users/shanhe/Desktop/W203/Lab/Lab_1/Forest_Fire_EDA/forestfires.csv", stringsAsFactors = FALSE)
+df_n <- mutate(df_n,
+       sun = ifelse(df_n$day=="sun", 1, 0),
+       mon = ifelse(df_n$day=="mon", 1, 0),
+       tue = ifelse(df_n$day=="tue", 1, 0),
+       wed = ifelse(df_n$day=="wed", 1, 0),
+       thu = ifelse(df_n$day=="thu", 1, 0),
+       fri = ifelse(df_n$day=="fri", 1, 0),
+       sat = ifelse(df_n$day=="sat", 1, 0),
+       time.of.week = ifelse(df_n$day == "sat" | df_n$day == "sun", "Weekend", "Weekday"),
+       weekend_n = ifelse(df_n$day == "sat" | df_n$day == "sun", 1, 0),
+       season = ifelse(df_n$month == "mar" | df_n$month == "apr" | df_n$month == "may", "spring",
+                ifelse(df_n$month == "jun" | df_n$month == "jul" | df_n$month == "aug", "summer",
+                ifelse(df_n$month == "sep" | df_n$month == "oct" | df_n$month == "nov", "fall",
+                ifelse(df_n$month == "dec" | df_n$month == "jan" | df_n$month == "feb", "winter", "NA")))),
+       spring_n = ifelse(df_n$month == "mar" | df_n$month == "apr" | df_n$month == "may", 1, 0),
+       summer_n = ifelse(df_n$month == "jun" | df_n$month == "jul" | df_n$month == "aug", 1, 0 ),
+       fall_n = ifelse(df_n$month == "sep" | df_n$month == "oct" | df_n$month == "nov", 1, 0  ),
+       winter_n = ifelse(df_n$month == "dec" | df_n$month == "jan" | df_n$month == "feb", 1, 0),
+       XY_Coord = paste(X, Y),
+       size_cat = ifelse(df_n$area  == 0, "Min", 
+                           ifelse(df_n$area >= 0.09 & df_n$area <= 10, "Small",
+                           ifelse(df_n$area > 10 & df_n$area <= 20, "Medium",
+                           ifelse(df_n$area > 20 &df_n$area <= 100, "Large",
+                           ifelse(df_n$area >100, "Severe", "Check"))))),
+       area_p1 = df_n$area + 1,
+       jan = ifelse(df_n$month=="jan", 1, 0),
+       feb = ifelse(df_n$month=="feb", 1, 0),
+       mar = ifelse(df_n$month=="mar", 1, 0),
+       apr = ifelse(df_n$month=="apr", 1, 0),
+       may = ifelse(df_n$month=="may", 1, 0),
+       jun = ifelse(df_n$month=="jun", 1, 0),
+       jul = ifelse(df_n$month=="jul", 1, 0),
+       aug = ifelse(df_n$month=="aug", 1, 0),
+       sep = ifelse(df_n$month=="sep", 1, 0),
+       oct = ifelse(df_n$month=="oct", 1, 0),
+       nov = ifelse(df_n$month=="nov", 1, 0),
+       dec = ifelse(df_n$month=="dec", 1, 0)
+)
+
+# factor for graphics
+levels(df_n$month)
+df_n$month <- factor(df_n$month, levels = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"))
+levels(df_n$day)
+df_n$day <- factor(df_n$day, levels = c("mon", "tue", "wed", "thu", "fri", "sat", "sun"))
+```
+
+```{r}
+df_n_no0 <- df_n[df_n$area != 0,]
+summary(df_n_no0)
+```
+
+Our parallel data frame contains 42 variables in aggregate.
+
+### Univariate Analysis of Key Variables
+
+We begin by exploring the distribution of the times and locations of the measurements in the dataset. A month by month comparison shows that the majority of the observations are in August and September with the third most in March. Looking in terms of seasonality, we can see that the majority of observations came in the fall and summer with very few in the winter.
+
+```{r fig.height = 7, fig.width = 10, fig.align = "center"}
+layout(matrix(c(1,2), 1, 2))
+barplot(table(df_n$month), ylab = "Number of observations", col = "#92d3ed", ylim=c(0,200), las=2)
+barplot(table(df_n$season), ylab = "Number of observations", col = "#92d3ed", ylim=c(0,250))
+```
+
+As far as when the observations were taken, we *could examine* whether observations were more likely to come during the week or on weekends. Measurements appear to have been fairly well spread out.
+
+```{r fig.height = 3, fig.width = 3, fig.align = "center"}
+barplot(table(df_n$time.of.week), ylab = "Number of observations", col = "#92d3ed", ylim = c(0,400)) #added ylim to include all values of weekday in scale
+axis(2, 1:2 * 200) #label 200 & 400
+```
+
+In addition to investigating how spread out the observations are over time, we *could* also look at how they are distributed over the area of the park. The observations come with an (x,y) created by partitioning the park into a 9X9 grid. The following visualization shows a heatmap of the density of observations from given locations within the park.
+
+```{r fig.height = 5, fig.width = 5, fig.align = "center"}
+Lab.palette <- colorRampPalette(c("blue", "orange", "red"), space = "Lab")
+smoothScatter(df_n$X, df_n$Y, colramp = Lab.palette, bandwidth = .45, 
+              xlab="X-coordinate", ylab="Y-coordinate")
+```
+
+We can see that the observations are generally spread out in the x direction, but seem to exclude the top third or so of the park. Indeed, we can see the ratio of observations from the top third of the park to the bottom two thirds.
+
+```{r fig.height = 3, fig.width = 3, fig.align = "center"}
+barplot(c(length(df_n$Y[df_n$Y<7]),length(df_n$Y[df_n$Y>6])), names.arg = c("1-6", "7-9"), 
+        ylab = "number of  observations", xlab = "Y-coordinate of observation", col = "#92d3ed", ylim=c(0,600))
+```
+
+To summarize, the dataset shows *that* a large majority of measurements took place in a narrow span of the year during the months of August and September, and *it* also lacks observarions from the top part of the park. The fact that the observations are so unevenly distributed in physical and temporal merits caution and making conclusions about the park as *a* whole based on the data provided.
+
+Turning our attention from examining the distribution of the location of the observations, we change our focus to the measured values themselves. The dataset includes four separate indices from the Fire Weather Index, a Canadian system for fire danger. Below are some summary statistics for those four indices. We note that there are no missing or NA values.
+
+```{r}
+cat("Summary of FFMC index:\n")
+summary(df_n$FFMC)
+cat("\nSummary of DMC index:\n")
+summary(df_n$DMC)
+cat("\nSummary of DC index:\n")
+summary(df_n$DC)
+cat("\nSummary of ISI index:\n")
+summary(df_n$ISI)
+```
+
+Comparing the minx/max values with the quartile distributions, some of these variables seem like they *have* outlier values. We *hence* create histograms and boxplots below to assess the distributions.
+
+```{r fig.height = 7, fig.width = 10, fig.align = "center"}
+layout(matrix(c(1,1,2,2,3,3,4,4,5,6,7,8), 3, 4, byrow=TRUE))
+hist(df_n$FFMC, breaks=20, xlab="FFMC value", main = "Histogram of FFMC Index",
+     col = "#92d3ed", ylim=c(0,400))
+hist(df_n$DMC, breaks=20, xlab="DMC value", main = "Histogram of DMC Index",
+     col = "#92d3ed", ylim=c(0,250))
+hist(df_n$DC, breaks=20, xlab="DC value", main = "Histogram of DC Index",
+     col = "#92d3ed", ylim=c(0,250))
+hist(df_n$ISI, breaks=20, xlab="ISI value", main = "Histogram of ISI Index",
+     col = "#92d3ed", ylim=c(0,350))
+boxplot(df$FFMC, xlab="FFMC", col = "#92d3ed", outcol = "darkred", outpch = 20)
+boxplot(df$DMC, xlab="DMC", col = "#92d3ed", outcol = "darkred", outpch = 20)
+boxplot(df$DC, xlab="DC", col = "#92d3ed", outcol = "darkred", outpch = 20)
+boxplot(df$ISI, xlab="ISI", col = "#92d3ed", outcol = "darkred", outpch = 20)
+```
+
+*Looking at the distributions of* these variables, it appears *that* we have outliers on the min side for the FFMC index and on the max side for the ISI index. These outliers are not necessarily *indications* of data integrity issues, but we should be careful to ensure that they are accounted for when assessing means or correlations.
+
+We perform a similar analysis on temp, humidity, rain and wind to see if there are data integrity issues on those measurements. 
+
+```{r}
+cat("Summary of temp:\n")
+summary(df_n$FFMC)
+cat("\nSummary of relative humidity:\n")
+summary(df_n$DMC)
+cat("\nSummary of wind:\n")
+summary(df_n$DC)
+cat("\nSummary of rain:\n")
+summary(df_n$ISI)
+```
+
+Once again, we see that there are no NA values. We plot histograms to see if there are outliers or other data integrity issues to look out for.
+
+```{r fig.height = 7, fig.width = 10, fig.align = "center"}
+layout(matrix(c(1,1,2,2,3,3,4,4,5,6,7,8), 3, 4, byrow=TRUE))
+hist(df_n$temp, breaks=20, xlab="Temperature (degrees C)", 
+     main = "Histogram of Temperature", col = "#92d3ed")
+hist(df_n$RH, breaks=20, xlab="Relative Humidity (in %)",
+     main = "Histogram of Relative Humidity", col = "#92d3ed")
+hist(df_n$wind, breaks=20, xlab="Wind speed (km/h)", 
+     main = "Histogram of Wind Speeds", col = "#92d3ed")
+hist(df_n$rain, breaks=20, xlab="Rain (mm/m2)", 
+     main = "Histogram of rain", col = "#92d3ed")
+boxplot(df$RH, xlab="Relative Humidity", col = "#92d3ed", outcol = "darkred", outpch = 20)
+boxplot(df$wind, xlab="Wind", col = "#92d3ed", outcol = "darkred", outpch = 20)
+boxplot(df$rain, xlab="Rain", col = "#92d3ed", outcol = "darkred", outpch = 20)
+boxplot(df$temp, xlab="Temperature", col = "#92d3ed", outcol = "darkred", outpch = 20)
+```
+
+For the most part, there is nothing that stands out  *strongly* in regards to the distributions of the weather variables. Most of the variables appear normally distributed with some outliers occuring with relative humidity, wind, and rain. Relative humidity also exhibits *a* positive skew. We also note that rain is a variable that is often quite small, *which in fact has only 8 non-zero values. This could be a result of how the measurement was taken but could also potentially indicate data quality issue*. All in all, we have no reason to believe there are siginificant data integrity issues with the weather variables, but we should be cautious in using these variables to draw conclusions based on the issues discussed.
+
+Finally, we examine our key Area variable using histograms and boxplots.
+
+```{r fig.height = 7, fig.width = 10, fig.align = "center"}
+layout(matrix(c(1,1,1,1,1,1,2,2,2,3,3,3,4,4,5,5,6,6), 3, 6, byrow=TRUE))
+hist(df_n$area, xlab="Burned Area range 0.00 hectares to 1090.84 hectares", 
+     main="Burned Area", col = "#92d3ed")
+hist(sqrt(df_n$area), xlab="", 
+     main="Sqrt of Burned Area",col = "#92d3ed")
+hist(log(df_n$area_p1, base=10), xlab="", 
+     main="Log of Burned Area", col = "#92d3ed")
+boxplot(df_n$area, xlab="Burned Area range 0.00 hectares to 1090.84 hectares", 
+     xlab="Burned Area", col = "#92d3ed", outcol = "darkred", outpch = 20)
+boxplot(sqrt(df_n$area),
+     xlab="Sqrt of Burned Area",col = "#92d3ed", outcol = "darkred", outpch = 20)
+boxplot(log(df_n$area_p1, base=10),
+     xlab="Log of Burned Area", col = "#92d3ed", outcol = "darkred", outpch = 20)
+```
+
+Evaluating the base line histogram we see that the distribution does not conform to a normal distribution and exhibits significant positive skew. This is reinforced by the supporting boxplot. We first attempted to normalize the distribution with a square root transform, but it did not have any significant normalizing effect. Next, we attempted a log transform. Because of the prevalence of 0 values in the set, we added 1 to each area variable before performing the transform. The shape of the distribution was relatively constant, although it is noted that if the 0 values were not present the log transform may have a normalizing effect. It is likely the data set could benefit from a more precise measure of area to eliminate these 0 values if they do in fact represent the occurrence of a fire.
+
+```{r fig.height = 5, fig.width = 10, fig.align = "center"}
+hist(log(df_n_no0$area, base=10), xlab="", 
+     main="Log of Burned Area \n without Zero Vals", col = "#92d3ed")
+```
+
+### Analysis of Key Relationships
+
+ 1. Linear Bivariate Relationships
+We first want to create a scatterplot matrix as a high-level overview of the relationships between our variables - 
+A scatterplot matrix reveals that some of the variables do exhibit linear and potentially other non-linear relationships that warrant further exploration. As we noticed in the univariate analysis, Area is postively skewed with majority of the values close to 0. Hence, in order for us to better understand bivariate relationship that Area has with other variables, we repeat the same analysis on both the orginal dataset (dataset 1) as well as a dataset with all 0 area excluded (dataset2). Moreover, we also created a logrithm and a square root transformation for the Area variable in both datasets to explore how these transformations, that decrease the postive skewness, affect the bivariate relationship. Since log(0) is undefined, we decided to add all the Area values by 1 in dataset 1 when calculating their logrithms. 
+
+```{r fig.height=12, fig.width=20, warning=FALSE}
+## 1. Dataset 1: all data
+scatterplotMatrix(~ area + sqrt(area) + log(area_p1, base = 10) + 
+                    X + Y + month + day + FFMC + DMC + DC + ISI + temp + RH + wind + rain, data = df_n,
+                  main = "Scatterplot Matrix for Key Variables", 
+                    diagonal = "histogram")
+```
+```{r fig.height=12, fig.width=20, warning=FALSE}
+## 2. Dataset 2: excluding 0 area
+scatterplotMatrix(~ area + sqrt(area) + log(area, base = 10) + 
+                    X + Y + month + day + FFMC + DMC + DC + ISI + temp + RH + wind + rain, data = df_n_no0,
+                  main = "Scatterplot Matrix for Key Variables", 
+                    diagonal = "histogram")
+```
+
+Both dataset 1 and dataset 2 demonstrate similar relationships, according to the least-square regression lines. However, looking at the smoothing lines for area-related scatterplots, we can see that dataset 1 has more noisy data values.
+
+As shown in the graphs above, we can see the following findings:
+1) Neither Square root transformation or logarithm transformation significantly improve any correlation strength
+2) Area has noticeable positive correlation with X, Y, month, day, DMC, DC, and Temp, of which the correlations with DMC and Temp seem to be the strongest
+3) Area and RH are negatively correlated
+4) Area doesn't show much correlation with FFMC, ISI, Wind or Rain. Rain only has 8 non-zero data points so we shouldn't pay too much attention 
+5) Month, DMC, DC, and Temp are positively related
+6) FFMC, DMC, DC, ISI, and Temp are positively related
+7) FFMC and RH show strong negative correlation
+
+By confirming that dataset 2 demonstrates very similar and less noisy relationships, we can likely treat dataset 2 as a useful subset in this EDA. However, since we don't know what a 0 area value means exactly, we want to include analyses on both dataset 1 and 2 to make sure that we are not skewing our results. 
+
+Next, we want to quantify the strengths of the correlations shown in the scatterplot matrices above for both datasets. 
+
+```{r fig.height=8, fig.width=10}
+corrplot(cor(df_n[,c(5:20, 22, 24:27,30:42)]), tl.col = "black")
+```
+
+The correlation coefficients above validate the relationships we noted from the scatterplots As we can see, the strongest correlation that Area has, besides its own transformations, is with Temperature. However, in both datasets, the correlation coefficient between Area and Temperature are merely around 0.10. It's likely that we don't have enough data points to demonstrate stronger correlations related to Area but the strong correlations among Temp and FFMC, DMC, DC, ISI, RH, and wind mean that these variables could also affect the bivariate relationships we see.
+
+Let's look closely at the relationship between Area and Temp, the strongest correlated variable according to the analyses above. 
+
+```{r fig.height=7, fig.width=10}
+layout(matrix(c(1,2), 1, 2))
+hist(df_n$temp, xlab="", main="All Temperature Values", col = "#92d3ed", ylim=c(0,200))
+hist(df_n_no0$temp, xlab="", main="Temperature without 0s", col = "#92d3ed")
+```
+
+As we have seen in the univariate analysis, we don't have many data points for Temp lower than 10 degrees or higher than 30 degrees. We need to keep that in mind when looking at the bivariate relationship. In order have a cleaner box plot graph, we here round temperature readings to their closest integer.
+
+```{r fig.height=7, fig.width=10}
+layout(matrix(c(1,2), 1, 2))
+boxplot(log(area_p1, base= 10) ~ round(temp, 0), data = df_n, # log transformation on area, quotient for temperature over 1
+at = sort(unique(round(df_n$temp,0))), cex.axis = .7,
+xlab = "Temperature", ylab = "Logarithm of Area", 
+main = "Log of Area under Different Temperatures +1 \n", 
+col = "#92d3ed", outcol = "darkred", outpch = 20)
+boxplot(log(area, base= 10) ~ round(temp,0), data = df_n_no0, # log transformation on area, quotient for temperature over 1
+at = sort(unique(round(df_n_no0$temp,0))), cex.axis = .7,
+xlab = "Temperature", ylab = "Logarithm of Area", 
+main = "Log of Area under Different Temperatures \n       without 0s",
+col = "#92d3ed", outcol = "darkred", outpch = 20)
+```
+
+In order to accomodate a few large outliers in the visualizations, we used the log transformation of area (log(area+1) for dataset 1, log(area) for dataset 2). If we focus on Area values in Temperature range of [20 degrees, 30 degrees], we see a slight positive correlation, confirming what we noted in the previous analyses. 
+
+#### 2. Nonlinear Bivariate Relationships
+
+So far we have only looked at the linear bivariate relationships that Area has with other variables, however, according to both our understanding of the variables and the scatterplots we see above, there could be some nonlinear bivariate relationships that we haven't yet explored. 
+
+##### 2.1 Month
+
+We now dive deeper into the relationship between Month and Area.
+
+```{r}
+#Dataset 1
+summary(df_n$month)
+#Dataset 2
+summary(df_n_no0$month)
+```
+
+The Month data points aren't distributed evenly. Note that there are less than 10 observations for Jan, Apr, May, Nov, and Dec in the original sample (dataset 1) and after excluding the 0 area values in dataset 2, we don't have any observations in Jan or Nov. 
+
+If this sample is taken in a time frame that's a multiple of one year, then we can see that fires that cause burned area > 0 happen most frequently in Aug and Sept, frequently in Mar and Jul and less frequently in other months. We should keep this in mind when interpreting the relationship between Month and Area. 
+
+```{r fig.height=7, fig.width=10}
+layout(matrix(c(1,2), 1, 2))
+# Dataset 1
+boxplot(log(area_p1, base = 10) ~ month, data = df_n, # log transformation on area, 
+cex.axis = .7, xlab = "Month", ylab = "Logarithm of Area",
+main = "Log of Area in Different Months +1 \n", 
+col = "#92d3ed", outcol = "darkred", outpch = 20)
+# Dataset 2
+boxplot(log(area, base = 10) ~ month, data = df_n_no0, # log transformation on area, 
+cex.axis = .7, xlab = "Month", ylab = "Logarithm of Area",
+main = "Log of Area in Different Months \n        without 0s",
+col = "#92d3ed", outcol = "darkred", outpch = 20)
+```
+
+In order to accomodate a few large outliers in the visualizations, we used the log transformation of area (log(area+1) for dataset 1, log(area) for dataset 2). May shows the highest median but since it only has 2 observations in dataset 1 and 1 in dataset 2, we shouldn't pay much attention. 
+With so few observations in certain months, the comparison of the medians across different months don't say too much but we can see that all fire with burned area >100 hectares happened in Jul, Aug, and Sep. 
+
+##### 2.2 Day
+
+Similar to Month, Day might have nonlinear relationship with Area. 
+
+```{r}
+#Dataset 1
+summary(df_n$day)
+#Dataset 2
+summary(df_n_no0$day)
+```
+
+Unlike Month, the data points for Day are distributed more evenly. This can be helpful if we try to compare the medians of the burned area on different days. 
+
+```{r fig.height=7, fig.width=10}
+layout(matrix(c(1,2), 1, 2))
+# Dataset 1
+boxplot(log(area_p1, base = 10) ~ day, data = df_n, # log transformation on area, 
+cex.axis = .7, xlab = "Day", ylab = "Logarithm of Area", 
+main = "Log of Area on Different Days +1 \n",
+col = "#92d3ed", outcol = "darkred", outpch = 20)
+# Dataset 2
+boxplot(log(area, base = 10) ~ day, data = df_n_no0, # log transformation on area, 
+cex.axis = .7, xlab = "Day", ylab = "Logarithm of Area", 
+main = "Log of Area on Different Days \n      without 0s",
+col = "#92d3ed", outcol = "darkred", outpch = 20)
+```
+
+We used similar log transformations here for the visualizations. From the box plots, we can't see a strong bivariate relationship between Area and Day as the medians for different days appear to be pretty close. 
+
+### Analysis of Secondary Effects
+
+When examining secondary effects, we first looked at our weekday data through a slightly modified lens. Using a dummy variable to assign observations to either a weekday or weekend category, we plotted these categories against log of area (after adding 1 to each area observation to correct for 0 values). Looking at the plot below, we see that weekday observations show a higher mean of log area than weekend observations. We could speculate that this may be due to differences in human activity in the park, which may be higher during the week versus weekend (or vice versa). However, since we don't have information regarding trends in park visits, we cannot say for certain what may be driving this trend. It is worth noting that there are nearly double the amount of weekday observations as weekend, which is generally in line with expectations if sampling from the week randomly.
+
+```{r fig.height=5, fig.width=10}
+boxplot(log(area_p1, base = 10) ~ time.of.week, data = df_n,
+        main = "Area by Time of Week", xlab = "Time of Week", ylab = "Area",
+        col = "#92d3ed", outcol = "darkred", outpch = 20)
+table(df_n$time.of.week)
+```
+
+Next, we took a similar approach and assigned each month value to seasonal categories. 
+
+March, April, May = Spring, 
+June, July, August = Summer, 
+September, October, November = Fall, 
+December, January, and February = Winter. 
+
+Plotting these categories against log area produced the chart below. Looking at the plot we can see some apparent positive trends in log area mean with season throughout the year. We could postulate that this might be due to things like seasonal weather patterns or seasonal human activity. However, it is also important to note that Winter only has 31 total observations, so the sample size of that category may not be meaningful. Additionally, the majority of oberservations within Summer occur in August, and the large majority of observations in Fall occur in September. If we had defined our seasons differently, these trends could differ. 
+
+```{r fig.height=5, fig.width=10}
+df_n$season <- factor(df_n$season, levels = c("spring", "summer", "fall", "winter"), 
+                      labels = c("Spring", "Summer", "Fall", "Winter"))
+boxplot(log(area_p1, base=10) ~ season, data=df_n,
+        main = "Log Area by Season", xlab = "Season", ylab = "Log Area",
+        col = "#92d3ed", outcol = "darkred", outpch = 20)
+table(df_n$season)
+table(df_n$month)
+```
+
+To examine this trend further, we also produced the following graphs, where we can more clearly see the most large and severe fires occurring in the Summer and Fall. 
+
+```{r fig.height=5, fig.width=10}
+df_n$size_cat <- factor(df_n$size_cat, levels = c("Min", "Small", "Medium", "Large", "Severe"))
+seasoncat<-table(df_n$season, df_n$size_cat)
+barplot(as.matrix(seasoncat),
+        main = "Fire Severity and Season", xlab = "Season", ylab = "Count", ylim = c(0, 300),
+        col = c("#92d3ed", "#cccccc", "#396a93", "#777777"), legend = rownames(seasoncat)) 
+ggplot(df_n) + geom_count(aes(season, size_cat)) + theme_minimal()
+```
+
+Lastly, we looked at the association of X,Y coordinates together with fire occurance to see if there are any regions within the park that might trend with severity. Looking at the plots below, we do see that there are pockets within the park with greater concentrations of fire counts. Using the size_cat variable, it appears that large and severe fires occur equally within these regions. This would lead us to hypothesize that perhaps these regions are more forested, or share common characteristics, but without knowing anything about the layout of the park we can't be certain. 
+
+```{r fig.height=6, fig.width=10}
+p1 <- ggplot(df_n) + geom_point(aes(X, Y), alpha=0.3, position = position_jitter(.1,0)) + theme_minimal()
+p2 <- ggplot(df_n) + geom_point(aes(X, Y, color=size_cat), alpha=0.7, position = position_jitter(.2,.2)) + 
+      scale_color_manual(values=c("#bbbbbb", "#aaaaaa", "green", "orange", "red")) + theme_minimal()
+p3 <- ggplot(df_n) + geom_point(aes(X, Y, color=wind), alpha=0.7, position = position_jitter(.2,.2)) + 
+      scale_color_gradient(low = "#9ed2fa", high = "#132B43",
+      space = "Lab", na.value = "grey50", guide = "colourbar") + theme_minimal()
+p4 <- ggplot(df_n) + geom_point(aes(X, Y, color=temp), alpha=0.7, position = position_jitter(.2,.2)) + 
+      scale_color_gradient(low = "blue", high = "#ff0000",
+      space = "Lab", na.value = "grey50", guide = "colourbar") + theme_minimal()
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(1, 2)))
+print(p1, vp = viewport(layout.pos.row = 1,layout.pos.col = 1))
+print(p2, vp = viewport(layout.pos.row = 1,layout.pos.col = 2))
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(1, 2)))
+print(p3, vp = viewport(layout.pos.row = 1,layout.pos.col = 1))
+print(p4, vp = viewport(layout.pos.row = 1,layout.pos.col = 2))
+```
+
+
+### Conclusion (20 pts)
+
+Our analysis didn't reveal any strong correlations within the sample set. Whether the lack of correlation is due to the sample set or the measurement methods used with the variables is not made clear by the data set, and the data set often shows counter-intuitive results. As an example, it could be expected that temperature and wind play a role in fire severity. However, examining temperature and wind more closely shows larger fires are not especially correlated to these factors.
+
+We suspect that secondary factors and the methods of measure may be playing a sigificant role. Specifically, we believe access to information like the cause of fire, other environmental factors, the proximity of fire suppression services, and levels of human activity may play a role. In addition, information related to the sampling method and methods of measure would help to elucidate the relationships within the data. As an example, the observations are more heavily represented in certain days of the week or in certain seasons. Although it can't be ascertained from the data whether this is due to the sampling methods used, it is plausible that the increased average count seen during weekends could be associated to increased human activity. Similarly, seasonality could be associated to drier weather or increased fuel availability, which are components of fire risk. 
+
+Cumulatively, it is difficult to assess whether fires in the region are well-represented by the data set. Accordingly, it would be difficult to predict the most severe fires. Notably, the inverse problem may be fairly easy to model given that most of the fires are very small.
