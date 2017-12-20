@@ -1,0 +1,97 @@
+---
+title: "HW week 12"
+subtitle: "w203: Statistics for Data Science"
+author: "Shan He"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# OLS Inference
+
+```{r results="hide", warning=FALSE}
+library(car)
+library(lmtest)
+library(sandwich)
+library(stargazer)
+```
+
+The file videos.txt contains data scraped from Youtube.com.
+
+1. Fit a linear model predicting the number of views (views), from the length of a video (length) and its average user rating (rate).
+
+```{r load data}
+setwd("/Users/shanhe/Desktop/W203/Homework/Week 12")
+df <- read.table("videos.txt", header = TRUE, sep = "\t")
+head(df)
+```
+
+It might make sense for us to take the logrithms of the views and length as the variables in our linear model. We can check to see whether they look reasonable 
+```{r EDA}
+summary(df$views)
+hist(df$views, breaks = 50)
+summary(df$length)
+hist(df$length, breaks = 50)
+summary(df$rate)
+hist(df$rate, breaks = 50)
+
+hist(log(df$views), breaks = 50)
+hist(log(df$length), breaks = 50)
+hist(log(df$rate), breaks = 50)
+```
+
+Log(views) and Log(length) seem to have reasobable shape, better than with out log().
+
+```{r LM}
+model1 <- lm(log(views) ~ log(length) + rate, data = df)
+```
+
+2. Using diagnostic plots, background knowledge, and statistical tests, assess all 6 assumptions of the CLM.  When an assumption is violated, state what response you will take.
+
+a. Linear population model
+
+We don’t have to check the linear population model, because we haven’t constrained the error term, so
+there’s nothing to check at this point.
+
+b. Random Sampling
+
+To check random sampling, we need to understand how the data was collected. Independence of the sample data can also be an issue, for example, users that watch a video that already has an average of 5 star review might tend to rate the videos higher.
+
+c. No perfect multicollinearity
+```{r}
+cor(df$rate, log(df$length), use = "complete.obs")
+```
+Rate and length show small correlation, which is allowed by MLR.3
+
+d. Zero-conditional mean
+```{r}
+plot(model1, which = 1 )
+```
+Overall, the conditional mean of residuals stay close to 0. Although we see some outliers around higher fitted values, it could be just due to a lack of data poitns around there. 
+
+e. Homoskedasticity
+```{r}
+plot(model1, which = 3)
+bptest(model1)
+```
+According to the Scale-Location graph, the variance seems pretty close across different fitted values. This implies homoskedasticity for our linear model.
+
+However, the Breusch-Pagan test results show strong statistical significance, rejecting the null hypothese os homoskedasticity. This could be caused by the large sample size but we should be cautious about the this assumption when testing our parameters.
+
+f. Normality of Errors
+```{r}
+plot(model1, which = 2)
+```
+The QQ plot of the residuals suggest normality of errors for our linear model
+
+3. Generate a printout of your model coefficients, complete with standard errors that are valid given your diagnostics.  Comment on both the practical and statistical significance of your coefficients.
+
+Since we aren't sure about the homoskedasticity of our linear model, we should use the 
+```{r}
+# To address heteroskedasticity, we use robust standard errors.
+coeftest(model1, vcov = vcovHC)
+```
+
+According to the t test, we see statistical significance of the intercept and slope parameter of "rate". More specifically, if we hold "length" constant, then an increase of 1 in the average rating is associated with ~ ~ 188% increase in the views, which is practically significant. 

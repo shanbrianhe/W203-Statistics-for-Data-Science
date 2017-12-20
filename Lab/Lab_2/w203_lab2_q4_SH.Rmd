@@ -1,0 +1,78 @@
+---
+title: "w203_lab2_q4_SH"
+author: "Shan He"
+date: "10/19/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#4e
+
+**1. Create a function that draws $n$ of $X_i$, $Y_i$, and $D_i$**
+```{r}
+set.seed(15) #set seed for reproducible results
+
+f <- function(n) {
+
+  X <- runif(n,-1,1)
+  Y <- runif(n,-1,1)
+  D = 0
+  
+  for (i in c(1:n)){
+  D[i] = ifelse( (X[i])^2 + (Y[i])^2 < 1, 1, 0)
+  }
+  
+  return(D)
+}
+```
+
+
+
+**2. Draw $D_i$'s for 100 $X_i$ and $Y_i$**
+```{r}
+D_100 = f(100)
+```
+
+
+
+**3. Compute $\overline{D}$**
+```{r}
+#sample mean
+mean(D_100)
+```
+
+The mean of Di's from a sample of 100 $X_i$'s and $Y_i$'s is 0.78, which is close to the $E(D_i)$, $\frac{\pi}{4}$ or 0.79 as calculated in part a.
+
+
+
+##4f
+
+**1. Replicate Experiments and Plot Sample Means**
+```{r}
+draws <- replicate(10000, mean(f(100)))
+hist(draws, breaks = 50, xlab = "Sample Mean", main = "Histogram of Sample Means")
+```
+
+
+
+#4g
+
+**Standard Deviation of Sample Means, or Standard Error of $\overline{D}$**
+```{r}
+sd(draws)
+```
+
+With $n$ = 100, from part c, we'd expect the standard error to be 0.041 which is very close to what we have here. 
+
+
+#4h
+
+**Compute Fraction of $\overline{D}$ that are larger than $\frac{3}{4}$**
+```{r}
+sum(draws > 3/4)/10000
+```
+
+The value calculated from part d is 0.806, which is close to the simulated result

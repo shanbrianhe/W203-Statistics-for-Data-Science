@@ -1,0 +1,464 @@
+---
+title: "Lab 3: Hypothesis Tests about the Mean."
+subtitle: "w203: Statistics for Data Science"
+date: ""
+output: pdf_document
+--- 
+
+```{r setup, include=FALSE, warning = FALSE}
+knitr::opts_chunk$set(fig.width=10, fig.height=3)
+```
+
+## Introduction
+The American National Election Studies (ANES) conducts surveys of voters in the United States before and after every presidential election. Using the data taken from the 2012 elections, I will try to answer the following questions of interest via various hypothesis tests:
+
+1. Did voters become more liberal or more conservative during the 2012 election?
+2. Were Republican voters older or younger, on the average, than Democratic voters in 2012?
+3. Were Republican voters older than 51, on the average in 2012?
+4. Were Republican voters more likely to shift their political preferences right or left (more conservative
+or more liberal), compared to Democratic voters during the 2012 election?
+5. Right before the 2012 election, were women voters more or less liberal than men voters?
+
+
+## The Data
+
+The American National Election Studies (ANES) conducts surveys of voters in the United States before and after every presidential election.  You are given a small subset of the 2012 ANES survey, contained in the file ANES\_2012\_sel.csv.
+
+There are a number of special concerns that arise whenever statisticians work with survey data.  In particular, the complete ANES survey data assigns a survey weight to each observation, which corrects for differences in how likely individuals are to be selected, and how likely they are to respond.  For the purposes of this assignment, however, we have removed the survey weights and we ask you to assume that the observations you have are a random sample from the voting population.
+
+For a glimpse into some of the intricacies that go into survey design, take a look at the introduction to the ANES User's Guide and Codebook. 
+
+```{r results="hide", warning=FALSE, include = FALSE}
+library(dplyr)
+library(effsize)
+```
+
+```{r cars}
+S = read.csv("/Users/shanhe/Desktop/w203/Lab/Lab_3/ANES_2012_sel.csv")
+```
+
+Following is an example of a question asked on the ANES survey:
+
+Where would you place YOURSELF on this scale, or haven't you thought much about this?
+
+Possible answers included:
+
+- 1. Extremely liberal 
+- 2. Liberal 
+- 3. Slightly liberal 
+- 4. Moderate; middle of the road 
+- 5. Slightly conservative 
+- 6. Conservative 
+- 7. Extremely conservative
+- -2. Haven't thought much about this 
+- -8. Don't know 
+- -9. Refused
+
+
+## Analysis
+
+I used the ANES dataset to address the following questions:
+
+###1. Did voters become more liberal or more conservative during the 2012 election?
+```{r}
+# EDA on libcpre_self & libcpo_self
+unique(S$libcpre_self)
+unique(S$libcpo_self)
+```
+Notice that 1) we have survey responses like "-2. Haven't thought much" and 2) we have different 
+levels of liberalness and #  conservativeness. Hence, I 1) add numeric variables that represent
+the level of conservativeness/liberalness ans 2) exclude answers with no applicability 
+in terms of levels of liberalness and conservativeness
+
+```{r}
+#temporarily assign 0 to the NA answers, but will be excluded in the analysis
+S_n <- mutate(
+        S, 
+        libcpre_self_n = as.numeric(ifelse(substr(S$libcpre_self,0,1) == "-", 0, substr(S$libcpre_self,0,1))),
+        libcpo_self_n = as.numeric(ifelse(substr(S$libcpo_self,0,1) == "-", 0, substr(S$libcpo_self,0,1)))
+)
+
+summary(S_n[, c("libcpre_self_n", "libcpo_self_n")])
+
+# subsetting dataset, exclude voters with non-applicable answers, either pre or post the election
+S_n_1 <- subset(S_n, libcpre_self_n != 0 & libcpo_self_n != 0, select= c(libcpre_self_n,libcpo_self_n))
+```
+
+In this case, we have a very natural pairing between our observations. Each voter has a data point before and after the election. 
+Since the variable is ordinal, we will want to use Wilcoxon Signed-Rank test, depending on whether the sample meets its assumption
+
+We first examine the means directly
+```{r}
+c(mean(S_n_1$libcpre_self_n), mean(S_n_1$libcpo_self_n))
+```
+Notice that the two means are very similar, which shows low practical significance
+
+We then investigate the difference in values
+```{r}
+D_1 = S_n_1$libcpo_self_n - S_n_1$libcpre_self_n
+summary(D_1)
+hist(D_1, breaks = -6:7 - 0.5, 
+     main = "Histogram of Difference (in scale) in Voter's Political Typology",
+     xlab = "Difference in Scale"
+     )
+```
+The sampling distribution of the differences seem to have
+a symmetric distribution. With an approximately symmetric distribution
+and a large sample size on ordinal scale, we can use a Wilcoxon Signed-Rank test.
+
+We then run a two tailed Wilcoxon Signed-Rank test with:
+Null Hpypothsis =  voters didn't become either more liberal or conservative during the 2012 election
+Alternative Hypothesis = voters did become either more liberal or conservative during the 2012 election
+
+```{r}
+# Wilcoxon Signed-Rank test
+wilcox.test(S_n_1$libcpo_self_n, S_n_1$libcpre_self_n, paired = TRUE)
+```
+
+Notice that we have a p-value of 0.1662, showing weak statistical signifincance. 
+Hence, we can't reject the null hypothesis, stating that the voters didn't become 
+either more liberal or conservative during the 2012 election, with a 95% confidence level.
+
+We then look at the pratical significance of our hypothesis test:
+```{r}
+#Investigate Practical Significance
+cohen.d(S_n_1$libcpo_self_n, S_n_1$libcpre_self_n, paired = TRUE)
+```
+Notice that the estimated effect size is -0.02, which is negligible
+
+
+###2. Were Republican voters (examine variable pid\_x) older or younger (variable dem\_age\_r\_x), on the average, than Democratic voters in 2012?
+
+We first do an EDA on our variables of interest
+```{r}
+# EDA on pid_x & dem_age_r_x
+unique(S_n$pid_x)
+summary(S_n$dem_age_r_x)
+```
+
+Notice that in pid_x we have "-2. Missing" and different levels of Demoracts and Republicans
+I will 1) exclude records with "-2. Missing" or "4. Independent" as pid_x since they can't be
+categrized as either Republican voters or Democratic voters and 2) create a categorical value
+based on pid_x to categorize Republican voters or Democratic voters
+
+```{r}
+S_n_2 <- mutate(subset(S_n,substr(pid_x,0,1) != '-' & substr(pid_x,0,1) != '4', 
+                       select = c(pid_x,dem_age_r_x)),
+                voter_cat = factor(ifelse(substr(pid_x,0,1) < 4, 'Democrat', 'Republican'))
+              )
+
+# Next, examine dem_age_r_x variable
+summary(S_n_2$dem_age_r_x) 
+```
+
+Notice that we see negative age, which doens't make sense and should be excluded
+```{r}
+S_n_2 <- subset(S_n_2,dem_age_r_x > 0)
+```
+
+We then look at the distribution of dem_age_r_x for both Republican voters and Democrat voters
+
+```{r}
+# For Republican Voters
+length(subset(S_n_2, voter_cat == "Republican")$dem_age_r_x)
+summary(subset(S_n_2, voter_cat == "Republican")$dem_age_r_x)
+hist(subset(S_n_2, voter_cat == "Republican")$dem_age_r_x, breaks = 50,
+     main = "Histogram of Voter Age of Republican Voters",
+     xlab = "Age")
+
+qqnorm(subset(S_n_2, voter_cat == "Republican")$dem_age_r_x, main = "Q-Q Plot for Republican Voter Age")
+
+# For Democrat Voters
+length(subset(S_n_2, voter_cat == "Democrat")$dem_age_r_x)
+summary(subset(S_n_2, voter_cat == "Democrat")$dem_age_r_x)
+hist(subset(S_n_2, voter_cat == "Democrat")$dem_age_r_x, breaks = 50,
+     main = "Histogram of Voter Age of Democrat Voters",
+     xlab = "Age")
+qqnorm(subset(S_n_2, voter_cat == "Democrat")$dem_age_r_x, main = "Q-Q Plot for Democrat Voter Age")
+```
+
+Notice that both distributions are skewed. 
+Here we want to compare the age of the Democrat voters to that 
+of the Republican voters. Although we don't have normal distributions, 
+we do have large sample sizes allowing us to perform a two-sample t-test 
+for the continuous vairble, age, with:
+
+Null Hypothesis = the average age of Democrat voters and Republican voters were the same in 2012
+Alternative Hypothsis = the average age of Democrat voters and Republican voters were different in 2012
+
+```{r}
+t.test(dem_age_r_x ~ voter_cat, data = S_n_2)
+```
+
+Notice that we have a p-value as 2.512e-07, showing strong statistical significance
+We hence are confident to reject the null hypothese that the average age of Democrat
+voters and Republican voters are the same.
+
+Also, by observing that we have a smaller mean age for Democrat Voters and a low p-value
+in the two-tailed test. We know that we can also reject the null hypothese against an
+alternative hypothese as "The mean age of Democrat voters are younger than that of the
+republican voters"
+
+We can do the one-tailed test just to confirm, here we have:
+
+Null Hypothesis = the average age of Democrat voters and Republican voters were the same in 2012
+Alternative Hypothsis = the average age of Democrat voters was younger than that of Republican voters in 2012
+
+```{r}
+t.test(dem_age_r_x ~ voter_cat, data = S_n_2, alternative = "less")
+```
+This confirms our analysis
+
+We then look at the practical significance for our hypothesis test:
+```{r}
+# Investigate Practical Significance
+cohen.d(dem_age_r_x ~ voter_cat, data = S_n_2)
+```
+
+Although our sample statistics show strong statistical significance, the effect size
+is quite small. With a Cohen's d value of -0.149, it shows small practicial significance.
+
+
+###3. Were Republican voters older than 51, on the average in 2012?
+
+We first create a subset of the data used in question 2 to only contain the age for Republican voters
+```{r}
+S_n_3 <- subset(S_n_2, voter_cat == "Republican", select = c(voter_cat, dem_age_r_x))
+```
+We then perform a EDA on the variables of interest
+```{r}
+# Examine dem_age_r_x
+summary(S_n_3$dem_age_r_x)
+hist(S_n_2$dem_age_r_x, breaks = 50,
+     main = "Histogram of Republican Voter Age",
+     xlab = "Age")
+qqnorm(S_n_2$dem_age_r_x, main = "Q-Q Plot for Republican Voter Age")
+```
+
+Notice that the distribution is skewed with a peak at around 55.
+Here we want to compare the age of the Republican voters to a constant.
+Although we don't have a normal distribution, 
+we do have a large sample size allowing us to perform a parametric t-test
+
+However, although we were asked that whether the average age of the Republican voters
+was higher than 50, we should still perform a two-tailed test because 
+1) there is no solid explanation that why we would treat a large observed difference 
+in the unexpected direction no differently from a difference in the expected 
+direction that was not strong enough to justify rejection of the null hypothesis
+and 2) if the sample mean is indeed larger than 50, a two-tailed test decreases
+the porbability of a Type I error.
+
+Null Hypothesis = In 2012, the average age of the Republican voters was 51
+Alternative Hypothesis = In 2012, the average age of the Republican voters was not 51
+
+```{r}
+t.test(S_n_3$dem_age_r_x - 50)
+```
+
+Notice that with a two-tailed test, our t-statistic shows strong statistical
+significance rejecting the null hypothesis stating that the average age for 
+Republican voters is equal to 50 with up to 99.95% confidence . Moreover, 
+for an one-tailed test where the alternative hypothesis is that average age 
+for Republicanvoters is greater then 50, we would have a p-value that's 
+a half of the p-value in the two-tailed test. Hence, we can confidently 
+(up to 99.97%) reject the null hypothesis in that scenario
+
+We can to a one-tailed test to confirm comments above:
+
+Null Hypothesis = In 2012, the average age of the Republican voters was 51
+Alternative Hypothesis = In 2012, the average age of the Republican voters was greater than 51
+
+```{r}
+t.test(S_n_3$dem_age_r_x - 50, alternative = "greater")
+```
+This confirms our analysis
+
+We then look at the practical significance of our hypothesis test:
+
+```{r}
+# Investigate Practical Significance
+(mean(S_n_3$dem_age_r_x) - 50) / sd(S_n_3$dem_age_r_x)
+```
+We have an effect size of 0.08, which means small practical significance.
+
+
+###4. Were Republican voters more likely to shift their political preferences right or left (more conservative or more liberal), compared to Democratic voters during the 2012 election?
+
+We first create a subset of the data to exclude non applicable survey answers 
+and create a variable to identify Demcrat or Republican voters, similar to what's been
+done previously
+```{r}
+# Create subset
+S_n_4 <- mutate(subset(S_n, libcpre_self_n != 0 & libcpo_self_n != 0 & substr(pid_x,0,1) != '-' & substr(pid_x,0,1) != '4', 
+                       select = c(pid_x,libcpre_self_n,libcpo_self_n)),
+                voter_cat = factor(ifelse(substr(pid_x,0,1) < 4, 'Democrat', 'Republican'))
+              )
+```
+
+We then examine the differences between the libcpre_self_n and libcpo_self_n, representing
+voter's swing in political typology before and after election, for both Republican and Democrat voters
+
+```{r}
+D_4_R <- subset(S_n_4, voter_cat == 'Republican')$libcpo_self_n - subset(S_n_4, voter_cat == 'Republican')$libcpre_self_n
+D_4_D <- subset(S_n_4, voter_cat == 'Democrat')$libcpo_self_n - subset(S_n_4, voter_cat == 'Democrat')$libcpre_self_n
+
+# For Republican Voters
+length(D_4_R)
+summary(D_4_R)
+hist(D_4_R, breaks = -6:7 - .5, 
+     main = "Histogram of Swing in Voter's Political Typology for Republican Voters",
+     xlab = "Difference in Scale"
+     )
+
+# For Democrat Voters
+length(D_4_D)
+summary(D_4_D)
+hist(D_4_D, breaks = -6:7 - .5, 
+     main = "Histogram of Swing in Voter's Political Typology for Democrat Voters",
+     xlab = "Difference in Scale"
+     )
+
+```
+
+It seems like the differences between the libcpre_self_n and libcpo_self_n for both
+Republican and Democrat voters are symmetrically distributed with similar spread, 
+allowing us to perform the Wilcoxon Rank Sum test. 
+
+Since our data is in ordinal scale, we will do the Wilcoxon Rank Sum test with a 
+null hypothesis stating that the differences between the libcpre_self_n and libcpo_self_n 
+for both Republican and Democrat voters are the same
+
+We can first look at the means directly
+```{r}
+c(mean(D_4_R), mean(D_4_D))
+```
+
+We then perform two-tailed Wilcoxon Rank Sum test
+
+Null Hypothese = Republican voters weren't more likely to shift their political preferences right or left compared to Democratic voters during the 2012 election
+
+Alternative Hypothese = Republican voters were more likely to shift their political preferences right or left compared to Democratic voters during the 2012 election
+
+```{r}
+wilcox.test(D_4_R, D_4_D)
+```
+
+Notice that with the null hypothese being that the mean differences 
+between the libcpre_self_n and libcpo_self_n for both Republican and Democrat voters
+are the same and an alternative hypothese saying that the mean differences 
+between the libcpre_self_n and libcpo_self_n for both Republican and Democrat voters
+are not the same, we have a p-value of 0.01096. It shows strong statistical significance
+of our test statistic, rejecting the null hypothese at ~99% confidence level
+
+In fact, since we have a p-value of 0.01096 for our two-tailed test, we know that
+we will get a p-value of 0.00548 if we were to do a one-tailed test with the same
+null hypothese but a different alternative hypothesis stating that 
+the mean difference between the libcpre_self_n and libcpo_self_n for Republican is higher
+than that for Democrat voters
+
+We can do a one-tailed test just to confirm:
+
+Null Hypothese = Republican voters weren't more likely to shift their political preferences right or left compared to Democratic voters during the 2012 election
+
+Alternative Hypothese = Republican voters were more likely to shift their political preferences right compared to Democratic voters during the 2012 election
+
+```{r}
+wilcox.test(D_4_R, D_4_D, alternative = "greater")
+```
+Test results confirms our comments above
+
+We then investigate the practical significance of our hypothesis test:
+```{r}
+# Investigate Practical Significance
+cohen.d(D_4_R, D_4_D)
+```
+We see an effect size of 0.07, which shows small practical significance.
+
+
+###5. Right before the 2012 election, were women voters more or less liberal than men voters?
+
+We first do an EDA on variables of interest:
+```{r}
+# Investigate data quality
+table(S_n$profile_gender, S_n$libcpre_self_n)
+
+# Create subset that includes records with applicable gender and libcpre_self_n response
+S_n_5 <- mutate(subset(S_n, libcpre_self_n != 0 & substr(profile_gender,0,1) != "-", 
+                       select = c(libcpre_self_n, profile_gender)),
+                gender = factor(ifelse(profile_gender == '1. Male', "Male", "Female"))
+              )
+
+# Examine distributions of libcpre_self_n for male and female voters
+
+# For Male Voters
+length(subset(S_n_5, gender == "Male")$libcpre_self_n)
+summary(subset(S_n_5, gender == "Male")$libcpre_self_n)
+hist(subset(S_n_5, gender == "Male")$libcpre_self_n, breaks = 1:8 - 0.5,
+     main = "Histogram of Political Typology for Male Voters",
+     xlab = "Political Typology (1 being the most liberal")
+
+# For Female Voters
+length(subset(S_n_5, gender == "Female")$libcpre_self_n)
+summary(subset(S_n_5, gender == "Female")$libcpre_self_n)
+hist(subset(S_n_5, gender == "Female")$libcpre_self_n, breaks = 1:8 - 0.5,
+     main = "Histogram of Political Typology for Female Voters",
+     xlab = "Political Typology (1 being the most liberal")
+```
+
+Although they don't seem to be normally distributed, the large sample sizes
+involes Central Limit Theorem and approximate the sampling distributions for 
+the sample means to be normally distributed. With that, we can run a Wilcoxon
+Rank Sum test for the ordinal value libcpre_self_n
+
+We first look at the means directly:
+```{r}
+c(mean(subset(S_n_5, gender == "Female")$libcpre_self_n), mean(subset(S_n_5, gender == "Male")$libcpre_self_n))
+```
+
+We then perform a two-tailed Wilcoxon Rank Sum test:
+
+Null Hypothesis: Right before the 2012 election, women voters were not more or less liberal than men voters
+Alternative Hypothesis: Right before the 2012 election, women voters were more or less liberal than men voters
+
+```{r}
+wilcox.test(libcpre_self_n ~ gender, data = S_n_5)
+```
+
+Notice that with the null hypothese being that before the 2012 election, women and men
+were equally liberal and an alternative hypothesis stating that before the 2012 election, 
+women voters and men voters weren't equally liberal, we have a p-value of 8.057e-05, which shows strong 
+statistical significance of our test statistic, rejecting the null hypothese at > 99% confidence level
+
+In fact, since we have a p-value of 8.057e-05 for our two-tailed test, we know that
+we will get a p-value of 4.028e-05 if we were to do a one-tailed test with the same
+null hypothese but a different alternative hypothesis stating that 
+right before the 2012 election, women voters were more liberal than men voters
+
+We can do an ont-tailed test just to confirm:
+
+Null Hypothesis: Right before the 2012 election, women voters were not more or less liberal than men voters
+Alternative Hypothesis: Right before the 2012 election, women voters were more liberal than men voters
+
+```{r}
+wilcox.test(libcpre_self_n ~ gender, data = S_n_5, alternative = "less")
+```
+Test results confirmed our analysis
+
+We then look at the practical significance of our hypothesis test
+```{r}
+# Investigate Practical Significance
+cohen.d(libcpre_self_n ~ gender, data = S_n_5)
+```
+We see an effect size of 0.11, which shows small practical significance.
+```
+
+##Conclusions
+
+After performing hypothesis testings, whether parametric or non parametric, for the questions of interests. 
+I 1) rejected null hypotheses that provides poor explanations of the data in favor of an alternative hypothesis
+that shows good evidence or 2) didn't reject the null hypotheses that provided good explanation of the data. 
+
+Although we saw strong statistical significances for a few of the hypothesis tests, all of them had small practical significances.
+This is due to a large sample size that we have for our dataset. But please note that we are using a simplied version of the 
+ANES survey data with the survey weight removed. The results of the analyses above are done based purely on the simplied
+sample and may not reflect actual situations for 2012 election. 

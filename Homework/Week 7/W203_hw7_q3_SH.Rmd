@@ -1,0 +1,56 @@
+---
+title: "w203_hw7_q3_SH"
+author: "Shan He"
+date: "10/26/2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##1. Observations
+```{r}
+times = c(2.65871285, 8.34273228, 5.09845548, 7.15064545, 
+          0.39974647, 0.77206050, 5.43415199, 0.36422211,3.30789126,
+          0.07621921, 2.13375997, 0.06577856, 1.73557740, 0.16524304, 
+          0.27652044)
+```
+
+##2. Likelihood Function
+```{r}
+log.lklh.poisson <- function(x, lambda){
+   sum(log(lambda) - x * lambda)
+}
+```
+
+##3. Plot Likelihood Function
+```{r}
+library(ggplot2)
+
+lambda <- seq(0 ,10 ,by = 0.01)
+qplot(lambda,
+      sapply(lambda, function(lambda){log.lklh.poisson(times, lambda)}),
+      geom = 'line',
+      main = 'Likelihood as a Function of Lambda',
+      xlab = 'Lambda',
+      ylab = 'Likelihood'
+      )
+```
+
+##4. Optimize Likelihood Function
+```{r}
+fn <- function(lambda){log.lklh.poisson(times, lambda)}
+optimize(fn, interval=c(0,10), maximum = T)
+```
+
+##5. Compare MLE for Lambda to Mean
+```{r}
+lambda_optim = optimize(fn, interval=c(0,10), maximum = T)$maximum
+lambda_optim
+1/mean(times)
+```
+
+The MLE for Lambda is the approximately the same as $1/E(x)$ just as expected. 

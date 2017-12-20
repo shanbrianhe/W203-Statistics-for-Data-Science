@@ -1,0 +1,8 @@
+class(spiciness)
+chef = c("Coye", "Deirdre", "Judd", "Anno", "Steve")#
+spiciness = c("Medium", "Mild", "Hot", "Hot", "Medium")
+class(spiciness)
+(sp = factor(spiciness))
+class(sp)
+as.numeric(sp)
+levels(sp)

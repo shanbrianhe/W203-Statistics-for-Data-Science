@@ -1,0 +1,52 @@
+---
+title: "preclass_9_SH"
+author: "Shan He"
+date: "11/4/2017"
+output: pdf_document
+---
+
+You have been assigned to analyze data concerning the disease osteoarthritis and its effect on weight bearing
+joints such as the knee. You are given the following summary data on the stance duration from two groups;
+older, and younger adults. With this data perform a one sided hypothesis test at $a$ = 0.05 on whether
+the mean standing duration is longer in older individuals. Assume stance duration in both populations is
+normally distributed.
+
+Group Sample Size Sample Mean Sample Std Dev
+Older       28        801         117
+Younger     16        780         72
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r preclass 9}
+#sample statistics
+s1 <- 117
+s2 <- 72
+mu1 <- 801
+mu2 <- 780
+n1 <- 28
+n2 <- 16
+
+#sample standard errors
+se1 <-s1/sqrt(n1)
+se2 <- s2/sqrt(n2)
+
+#degree of freedom
+v <- (se1^2 + se2^2)^2 / ( (se1)^4/(n1-1) + (se2)^4/(n2-1) )
+
+#t-statistics
+t = (mu1 - mu2)/sqrt(se1^2 + se2^2)
+
+#p-value
+p = pt(t, v, lower.tail = FALSE)
+
+#t-test result
+alpha = 0.05
+
+if (p <= alpha)
+{ "Reject Null" }
+
+if (p > alpha)
+{ "Fail to Reject Null" }
+```

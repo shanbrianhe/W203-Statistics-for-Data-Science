@@ -1,0 +1,151 @@
+---
+title: "HW week 11"
+subtitle: "w203: Statistics for Data Science"
+author: "Shan He"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=10, fig.height=3, font_adjustment = -2)
+```
+
+### Get familiar with the data
+You receive a data set from World Bank Development Indicators. 
+
+- Load the data using `load` and see what is loaded by using `ls()`. You should see `Data` which is the data frame including data, and `Descriptions` which is a data frame that includes variable names. 
+  
+```{r}
+library(car)
+load("Week11.Rdata")
+ls()
+```
+
+- Look at the variables, read their descriptions, and take a look at their histograms. Think about the transformations that you may need to use for these variables in the section below. 
+
+```{r}
+Definitions
+columns <- names(Data)
+classes <- sapply(Data,class)
+columns[classes == 'numeric']
+
+summary(Data)
+#plot histogram for each numeric variable
+for(col in columns[classes == 'numeric'])
+{
+  hist(Data[,col], breaks = 50, main = paste("Histogram of ", col))
+}
+```
+
+We observe some skewness and potential outliers in our data but they seem to be in range. No transformations is needed at the point. 
+
+- Run: `apply(!is.na(Data[,-(1:2)] ) , MARGIN= 2, mean )` and explain what it is showing.
+  
+```{r}
+apply(!is.na(Data[,-(1:2)]) , MARGIN= 2, mean)
+```
+This function looks at dataframe Data (with first two columns excluded) and compute the percentage of non-NA values in the columns. (!is.na() returns 0 for NA ans 1 for non-NA)
+
+- Can you include both `NE.IMP.GNFS.CD` and `NE.EXP.GNFS.CD` in the same OLS model? Why?
+Yes, they might be correlated but shouldn't have collinearity with each other. 
+
+- Rename the variable named `AG.LND.FRST.ZS` to `forest.` This is going to be our dependent variable.
+```{r}
+names(Data)[names(Data) == "AG.LND.FRST.ZS"] <- "forest"
+```
+
+
+### Decribe a model for that predicts `forest`
+
+- Write a model with two explanatory variables. 
+```{r}
+scatterplotMatrix(Data[, -(1:2)])
+cor(Data[, -(1:2)], use = "complete.obs")
+```
+
+From the analysis above, choose the two variables with the highest correlation. 
+  
+  $$ forest = \beta_0 + \beta_1*TX.VAL.AGRI.ZS.UN + \beta_1*MS.MIL.XPND.GD.ZS + u $$
+  
+```{r}
+hist(Data$TX.VAL.AGRI.ZS.UN)
+hist(Data$MS.MIL.XPND.GD.ZS)
+```
+We notice that for both varaibles, they are positively skewed with a few outliers that have higher values. 
+
+```{r}
+model1 = lm(forest ~ TX.VAL.AGRI.ZS.UN + MS.MIL.XPND.GD.ZS, data = na.omit(Data))
+```
+
+- Create a residuals versus fitted values plot and assess whether your coefficients are unbiased.
+```{r}
+plot(model1, which = 1, "Residuals versus Fitted Values for Model 1")
+mean(model1$residuals)
+```
+The residuals averages about 0, indicating unbiased coefficients.
+
+- How many observations are being used in your analysis? 
+```{r}
+nobs(model1)
+```
+there are 54 observations
+
+- Are the countries that are dropping out dropping out by random chance? If not, what would this do to our inference?
+
+No, all the NA values are dropped and this is not random that certain coutries have NA values. This could lead to inaccurate inference as we lack certain data points that could potentially have large influences. 
+
+
+- Now add a third variable.
+
+```{r}
+#picking from the correlation matrix, we have the third most correlated variable as MS.MIL.XPND.ZS
+#MS.MIL.XPND.ZS and MS.MIL.XPND.GD.ZS are possibly correlated but they don't have collinearity
+model2 <- lm(forest ~ TX.VAL.AGRI.ZS.UN + MS.MIL.XPND.GD.ZS + MS.MIL.XPND.ZS, data = na.omit(Data))
+model2$coefficients
+```
+
+- Show how you would use the regression anatomy formula to compute the coefficient on your third variable.  First, regress the third variable on your first two variables and extract the residuals. Next, regress forest on the residuals from the first stage.
+
+```{r}
+model3 <- lm(MS.MIL.XPND.ZS ~ TX.VAL.AGRI.ZS.UN + MS.MIL.XPND.GD.ZS, data = na.omit(Data))
+model4 <- lm(na.omit(Data)$forest ~ model3$residuals)
+model4$coefficients
+```
+
+We got the same coefficient for MS.MIL.XPND.ZS.
+
+- Compare your two models.
+
+```{r}
+summary(model1)
+summary(model2)
+```
+- Do you see an improvement? Explain how you can tell.
+
+Yes, as the R-square value increased from model 1 to model 2. 
+
+### Make up a country
+
+- Make up a country named `Mediland` which has every indicator set at the median value observed in the data. 
+
+```{r}
+a = median(na.omit(Data)$TX.VAL.AGRI.ZS.UN)
+b = median(na.omit(Data)$MS.MIL.XPND.GD.ZS)
+c = median(na.omit(Data)$MS.MIL.XPND.ZS)
+```
+
+- How much forest would this country have?
+
+```{r}
+predict(model2,data.frame(TX.VAL.AGRI.ZS.UN = a, MS.MIL.XPND.GD.ZS = b, MS.MIL.XPND.ZS = c))
+```
+It's predicted to have 29.27% (of land area) forest. 
+
+### Take away
+
+- What is the causal story, if any, that you can take away from the above analysis? Explain why.
+  
+We can't really make any conclusion regarding causality from our analysis since we can't say that all the other vairables besides our predictors remain unchanged when we change our predictors. 
+
+
+
+

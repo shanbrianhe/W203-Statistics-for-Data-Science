@@ -1,0 +1,7 @@
+library(MASS)
+set.seed(898)
+wingspan = rnorm(100, mean = 10, sd = 4)
+velocity = 0.5 * wingspan + rnorm(100)
+plot(wingspan, velocity, main = "Simulated Data on Swallow Flight Characteristics")
+set.seed(80)
+set.seed(898)

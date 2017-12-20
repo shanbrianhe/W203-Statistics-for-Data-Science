@@ -1,0 +1,143 @@
+---
+title: "Homework 4"
+author: "Answer Key"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Best Game in the Casino
+
+You flip a fair coin 3 times, and get a different amount of money depending on how many heads you get. For 0 heads, you get $0. For 1 head, you get $2. For 2 heads, you get $4. Your expected winnings from the game are $6.
+
+(a) How much do you get paid if the coin comes up heads 3 times?
+
+Let random variable H represent the number of heads.  Let X(H) represent the winnings.  Since X is a function of a random variable, it is also a random variable.
+
+E(X) = 6 
+
+P(H = 0) = 1/8
+
+P(H = 1) = 3/8
+
+P(H = 2) = 3/8
+
+P(H = 3) = 1/8
+
+E(X) = (P(H = 0) * 0) + (P(H = 1) * 2) + (P(H = 2) * 4) + (P(H = 3) * x)
+
+6 = (1/8 * 0) + (3/8 * 2) + (3/8 * 4) + (1/8 * x)
+
+6 = $0 + 6/8 + 12/8 + 1/8x
+
+24/4 = 9/4 + 1/8x
+
+15/4 = 1/8x
+
+120/4 = x
+
+x = $30
+
+(b) Write down a complete expression for the cumulative probability function for your winnings from the game.
+
+$F(x) = \begin{cases}
+0, &x < 0 \\
+1/8,  &0 \leq x < 2 \\
+1/2, &2 \leq x < 4 \\
+7/8, &4 \leq x < 30 \\
+1, &x \geq 30\\
+\end{cases}$
+
+# 2. Processing Pasta
+A certain manufacturing process creates pieces of pasta that vary by length. Suppose that the length of a particular piece, L, is a continuous random variable with the following probability density function.
+
+f(l) = $\begin{cases}
+0,  l  \leq 0 \\
+\frac{l}{2}, 0 < l  \leq 2 \\
+0, 2 < l \\
+\end{cases}$
+
+(a) Write down a complete expression for the cumulative probability function of L.
+
+$F(l) = \int_{\bar{l}=-\infty}^{l} f(\bar{l}) d\bar{l}$
+
+Notice that we needed a new variable to integrate over.  The integrand is only positive between 0 and 2, so we already know F will be zero below this interval and 1 above this interval.  
+
+When $0 < l < 2$, we have 
+
+$F(l) = \int_{\bar{l}=-\infty}^{0} 0 d\bar{l} + \int_{\bar{l}=0}^{l} \frac{\bar{l}}{2} d\bar{l} = 0 + \frac{\bar{l}^2}{4}\bigg|_0^l= \frac{l^2}{4}$
+
+Putting these together, we have the complete expression,
+
+$F(l) = \begin{cases}
+0,  l \leq 0 \\
+\frac{l^{2}}{4}, 0 < l < 2\\
+1, 2 \leq l \\
+\end{cases}$
+
+(b) Using the definition of expectation for a continuous random variable, compute the expected length of the pasta, E(L).
+
+Although some people will skip this step, I strongly recommend that you start your expression for expectation properly, by integrating all the way from $-\infty$ to $\infty$.
+
+$$E(L) = \int_{-\infty}^{\infty} l\cdot f(l)dl = \int_{-\infty}^{0} l \cdot 0 dl + \int_{0}^{2} l \cdot \frac{l}{2} dl + \int_{2}^{\infty} l\cdot 0dl$$
+$$ = 0+ \int_{0}^{2} l\cdot \frac{l}{2}dl + 0 = \int_{0}^{2} \frac{l^{2}}{2}dl = \frac{l^{3}}{6} = \frac{8}{6}$$
+
+
+
+#3 The Warranty is Worth It
+Suppose the life span of a particular (shoddy) server is a continuous random variable, with a uniform probability distribution between 0 and 1 year. The server comes with a contract that guarantees you money if the server lasts less than 1 year. In particular, if the server lasts t years, the manufacturer will pay you x = 100$(1-t)^\frac{1}{2}$. Let X be the random variable representing the payout from the contract.
+
+(a) Compute the expected payout from the contract, E(X ) = E(g(T )), using the expression for the expectation of a function of a random variable.
+$$ E(X) = E(g(T)) = \int g(t)f(t) dt  =  \int 100 (1 - t) \frac{1}{2} dt$$
+
+Let v = 1 – t and dv = -dt. Then $$ E(X) = \int -100 v^{\frac{1}{2}}dv 
+=  \left.-\frac{200}{3} (1-t) ^{\frac{3}{2}}\right|_{t=0}^{t=1} = \frac{200}{3} = \$66.67 $$ 
+
+(b) Next, compute E[X] another way, by first characterizing the random variable X. Follow these steps:
+i. First, suppose that you are given a specific value for the payoff, X = x, where $ 0 $\leq$ x $\leq$ \$100. What is the value for T that results in this payoff?
+
+$$x = 100 (1-t)^{\frac{1}{2}}$$
+$${\frac{x}{100}}^2 = 1-t $$
+$$T = 1 - ({\frac{x}{100}})^2 $$
+
+ii. Next, suppose that all you know is that the payoff is less than or equal to some value, X $\leq$ x, where again  $ 0 $\leq$ x $\leq$ \$100. What does this tell you about the life span of the server? Specifically, write down the condition for that is equivalent X $\leq$ x.
+
+As t decreases, x increases for all values of $X \leq x$, $T \geq t$. Probability that X $\leq$ x is the probability that T $\geq$ t so t $\leq$ 1-$({\frac{x}{100}})^2$ where $0 $\leq$ x $\leq$ $100.
+
+
+iii. Using the condition you just wrote down, what is the probability that X $\leq$ x? Write down a complete expression for the cumulative probability function of X.
+
+F(X) = 1 - (1-$({\frac{x}{100}})^2$) = $({\frac{x}{100}})^2$
+
+
+iv. Take a derivative to compute the probability density function for X.
+
+The probability density function $p(X=x) = F'(x) = ({\frac{2x}{100^2  }})$ where $0 $\leq$ x $\leq$ $100.
+
+
+v. Use the pdf of X to compute E[X]. If you did everything right, your
+answer should match what you got in part (a).
+
+$$E[X] = \int_{0}^{100} x({\frac{2x}{10000}}) = \int_{0}^{100} \frac{2x^2}{10000} = \$66.67$$
+
+
+# The Baseline for Measuring Deviations
+
+Given any random variable X and a real number t, we can define another random variable Y=(X-t). In other words, for any random variable, we can choose a real number, t, as a baseline and calculate the squared deviation of X from t. You might wonder why we often use square deviations (instead of taking an absolute value, or cubing them, etc.). This exercise will shed some light on why this is a natural choice.
+
+(a) Write down an expression for E[Y] and use properties of expectation to simplify it as much as you can.
+
+$E[Y] = E[(X-t)^2] = E[X^2 - 2tX + t^2] = E[X^2]-2tE[X]+t^2$
+
+
+(b) Taking a partial derivative with respect to t, compute the value of t that minimizes E[Y]. (Hint: Your answer should be a very familiar value)
+
+$\frac{\partial}{\partial t} E[Y] = \frac{\partial}{\partial t}\big[E[X^2]-2tE[X]+t^2 \big] = -2E[X] + 2t$
+
+Setting this equal to zero (our first-order condition), we get $t = E(X)$.  This shouldn't be too surprising: The value of t that minimizes E(Y) will be E(X) because all the deviations of the random variable X are centered around this expectation.
+
+(c) What is the value of E[Y] for this choice of t?
+
+E(Y) = $E(X^{2})-E(X)^{2} = var(X)$, the variance of X

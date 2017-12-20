@@ -1,0 +1,160 @@
+---
+title: "Week 15 Live Session - Instructor Version"
+author: "w203 Instructional Team"
+
+date: "December 12, 2016"
+output: pdf_document
+---
+
+## Announcements
+
+
+
+*********************************
+
+## Reproducability Exercise 
+
+In this exercise we will be looking at the dataset called pill_test.RData .  It contains the results of an IQ test administered immediately after a subject has taken a pill containing an experimental nootropic compound.  Each compound was experimentally coded as a different "color".  A control group also was given a pill that did not contain an experimental compound.  These nootropic compounds are extremely expensive to manfacture, so our budget will only allow ten pills of each type to be used for th purposes of scientific experimentation.
+
+###Test 1:  One Pill vs. Control
+
+First test the hypothesis of the blue pill having an effect on IQ test.  Discuss your results
+
+###Test 2:  Two Pills vs. Control
+
+Now test the blue pill and the brown pill against the control.  Discuss your results
+
+###Test 3:  All pills vs. Control
+
+Lastly test all pills against the control.  Discuss your results.  Would you have made different conclusions if you had done this test first?
+
+###The Truth
+
+These pills are M&Ms, meaning they have no effect on IQ.  The data was generated using the following script:
+
+```{r}
+set.seed(486)
+
+reps = 10
+
+control = rnorm(reps,100,20)
+red = rnorm(reps,100,20) 
+yellow = rnorm(reps,100,20)
+blue = rnorm(reps,100,20)
+green = rnorm(reps,100,20)
+orange = rnorm(reps,100,20)
+brown = rnorm(reps,100,20)
+```
+
+###Questions:
+
+1)  What are some flaws in the initial study design that might have led you to the spurious conclusions that you made above?
+
+2)  How could you fix those flaws WITHOUT collecting more data?
+
+###Permutation Study
+
+Let's randomly re-assign brown pills and control pills and look at the distribution of the t-statistic (a true permutation test would do all combinations)
+
+both = c(control,brown)
+
+perms = 100000
+i = 1
+tstats = vector(mode = "numeric", perms)
+diffs = vector(mode = "numeric", perms)
+
+for (i in 1:perms){
+  both = sample(both)
+  control_fake = both[1:reps]
+  brown_fake = both[(reps+1):(2*reps)]
+  tstats[i] = t.test(brown_fake, control_fake)$statistic
+  pair = sample(both,2)
+  diffs[i] = pair[1] - pair[2]
+}
+
+hist(tstats)
+
+###Subsampling Study
+
+We can also randomly subsample our data and create different estimates of the mean to have some idea of it's variance.
+
+```{r}
+# Make a sub sample of half the observations and do a permutation test
+
+control_sub = sample(seq(1:reps),floor(reps/2))
+red_sub = sample(seq(1:reps),floor(reps/2))
+yellow_sub = sample(seq(1:reps),floor(reps/2))
+blue_sub = sample(seq(1:reps),floor(reps/2))
+green_sub = sample(seq(1:reps),floor(reps/2))
+orange_sub = sample(seq(1:reps),floor(reps/2))
+brown_sub = sample(seq(1:reps),floor(reps/2))
+
+IQ = c(control[control_sub],red[red_sub],yellow[yellow_sub],blue[blue_sub],green[green_sub],orange[orange_sub],brown[brown_sub])
+MM = c(rep("control",floor(reps/2)),rep("red",floor(reps/2)),rep("yellow",floor(reps/2)),rep("blue",floor(reps/2)),rep("green",floor(reps/2)),rep("orange",floor(reps/2)),rep("brown",floor(reps/2)))
+color_ = factor(MM)
+
+model_4 = lm(IQ~0+color_)
+summary(model_4)
+
+coefs = model_4$coefficients
+coefs_names = names(model_4$coefficients)
+
+# replicate that test
+
+perms = 3999
+i = 0
+
+while (i < perms) {
+  control_sub = sample(seq(1:reps),floor(reps/2))
+  red_sub = sample(seq(1:reps),floor(reps/2))
+  yellow_sub = sample(seq(1:reps),floor(reps/2))
+  blue_sub = sample(seq(1:reps),floor(reps/2))
+  green_sub = sample(seq(1:reps),floor(reps/2))
+  orange_sub = sample(seq(1:reps),floor(reps/2))
+  brown_sub = sample(seq(1:reps),floor(reps/2))
+  
+  IQ = c(control[control_sub],red[red_sub],yellow[yellow_sub],blue[blue_sub],green[green_sub],orange[orange_sub],brown[brown_sub])
+  MM = c(rep("control",floor(reps/2)),rep("red",floor(reps/2)),rep("yellow",floor(reps/2)),rep("blue",floor(reps/2)),rep("green",floor(reps/2)),rep("orange",floor(reps/2)),rep("brown",floor(reps/2)))
+  color_ = factor(MM)
+  
+  model_perm = lm(IQ~0+color_)
+  
+  coefs_add = model_perm$coefficients
+  coefs = c(coefs,coefs_add)
+  coefs_names_add = names(model_perm$coefficients)
+  coefs_names = c(coefs_names,coefs_names_add)
+  
+  i = i + 1
+}
+
+# look at some pretty plots
+
+df = data.frame(xx=coefs, yy=coefs_names)
+
+library(ggplot2)
+
+ggplot(df,aes(x=xx)) + 
+  geom_histogram(data=subset(df,yy == 'color_yellow') , fill = "yellow", alpha = 0.2, binwidth = 2.5) +
+  geom_histogram(data=subset(df,yy == 'color_control') , fill = "black", alpha = 0.2, binwidth = 2.5)
+
+ggplot(df,aes(x=xx)) + 
+  geom_histogram(data=subset(df,yy == 'color_blue') , fill = "blue", alpha = 0.2, binwidth = 2.5) +
+  geom_histogram(data=subset(df,yy == 'color_control') , fill = "black", alpha = 0.2, binwidth = 2.5)
+
+ggplot(df,aes(x=xx)) + 
+  geom_histogram(data=subset(df,yy == 'color_orange') , fill = "orange", alpha = 0.2, binwidth = 2.5) +
+  geom_histogram(data=subset(df,yy == 'color_control') , fill = "black", alpha = 0.2, binwidth = 2.5)
+
+ggplot(df,aes(x=xx)) + 
+  geom_histogram(data=subset(df,yy == 'color_red') , fill = "red", alpha = 0.2, binwidth = 2.5) +
+  geom_histogram(data=subset(df,yy == 'color_control') , fill = "black", alpha = 0.2, binwidth = 2.5)
+
+ggplot(df,aes(x=xx)) + 
+  geom_histogram(data=subset(df,yy == 'color_green') , fill = "green", alpha = 0.2, binwidth = 2.5) +
+  geom_histogram(data=subset(df,yy == 'color_control') , fill = "black", alpha = 0.2, binwidth = 2.5)
+
+ggplot(df,aes(x=xx)) + 
+  geom_histogram(data=subset(df,yy == 'color_brown') , fill = "brown", alpha = 0.2, binwidth = 2.5) +
+  geom_histogram(data=subset(df,yy == 'color_control') , fill = "black", alpha = 0.2, binwidth = 2.5)
+```
+
